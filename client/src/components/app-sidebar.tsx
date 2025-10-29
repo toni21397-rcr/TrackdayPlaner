@@ -6,6 +6,7 @@ import {
   Map,
   Settings as SettingsIcon,
   ShoppingCart,
+  Building2,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -40,6 +41,11 @@ const menuItems = [
     title: "Tracks",
     url: "/tracks",
     icon: MapPin,
+  },
+  {
+    title: "Organizers",
+    url: "/organizers",
+    icon: Building2,
   },
   {
     title: "Vehicles",

@@ -17,6 +17,7 @@ import MapPage from "@/pages/map";
 import SettingsPage from "@/pages/settings";
 import Booking from "@/pages/booking";
 import BookingDetail from "@/pages/booking-detail";
+import Organizers from "@/pages/organizers";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/trackdays" component={Trackdays} />
       <Route path="/trackdays/:id" component={TrackdayDetail} />
       <Route path="/tracks" component={Tracks} />
+      <Route path="/organizers" component={Organizers} />
       <Route path="/vehicles" component={Vehicles} />
       <Route path="/booking" component={Booking} />
       <Route path="/booking/:trackId" component={BookingDetail} />
