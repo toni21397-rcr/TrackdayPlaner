@@ -75,16 +75,17 @@ export default function Booking() {
                   </div>
 
                   {track.organizerWebsite && (
-                    <Link href={`/booking/${track.id}`}>
-                      <Button
-                        variant="default"
-                        className="w-full"
-                        data-testid={`button-book-detail-${track.id}`}
-                      >
+                    <Button
+                      variant="default"
+                      className="w-full"
+                      asChild
+                      data-testid={`button-book-detail-${track.id}`}
+                    >
+                      <Link href={`/booking/${track.id}`}>
                         <ArrowRight className="w-4 h-4 mr-2" />
                         Book & Create Trackday
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
                 </CardContent>
               </Card>
