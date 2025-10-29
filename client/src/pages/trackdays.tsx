@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Filter, Search, Navigation, ExternalLink } from "lucide-react";
+import { Plus, Filter, Search, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -197,21 +197,6 @@ export default function Trackdays() {
                         <div className="text-sm font-mono text-muted-foreground">
                           {trackday.routeDistance.toFixed(0)} km
                         </div>
-                      )}
-                      {trackday.track.organizerWebsite && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                          className="w-full"
-                          data-testid={`button-book-${trackday.id}`}
-                        >
-                          <a href={trackday.track.organizerWebsite} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4 mr-2" />
-                            Book Trackday
-                          </a>
-                        </Button>
                       )}
                     </CardContent>
                   </Card>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, Edit, Trash2, Plus, ExternalLink } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -115,19 +115,6 @@ export default function TrackdayDetail() {
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                {trackday.track.organizerWebsite && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    asChild
-                    data-testid="button-book-now"
-                  >
-                    <a href={trackday.track.organizerWebsite} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Book Now
-                    </a>
-                  </Button>
-                )}
                 <Button
                   variant="outline"
                   size="sm"
