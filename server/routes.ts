@@ -162,12 +162,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const settings = await storage.getSettings();
     const vehicle = trackday.vehicleId ? await storage.getVehicle(trackday.vehicleId) : null;
     
-    // Calculate route (using mock data if no API key)
+    // Calculate route (prefer Google Maps, fallback to OpenRouteService, then mock data)
     const routeData = await calculateRoute(
       settings.homeLat,
       settings.homeLng,
       track.lat,
       track.lng,
+      settings.googleMapsApiKey,
       settings.openRouteServiceKey
     );
     
@@ -560,43 +561,110 @@ async function calculateRoute(
   fromLng: number,
   toLat: number,
   toLng: number,
-  apiKey: string
+  googleMapsApiKey: string,
+  openRouteServiceKey: string
 ): Promise<{ distance: number; duration: number; geometry?: string }> {
-  // If no API key, use mock data with simple straight line geometry
-  if (!apiKey) {
-    const distance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
-    const duration = Math.round(distance / 80); // Assume 80 km/h average
-    const geometry = JSON.stringify([[fromLng, fromLat], [toLng, toLat]]);
-    return { distance, duration, geometry };
+  // Try Google Maps first if API key is available (this matches navigation exactly!)
+  if (googleMapsApiKey) {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&key=${googleMapsApiKey}`
+      );
+      
+      if (!response.ok) throw new Error('Google Maps API request failed');
+      
+      const data = await response.json();
+      if (data.status === 'OK' && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const leg = route.legs[0];
+        const distance = Math.round(leg.distance.value / 1000); // m to km
+        const duration = Math.round(leg.duration.value / 60); // s to min
+        
+        // Decode polyline to get route geometry
+        const polyline = route.overview_polyline.points;
+        const coordinates = decodePolyline(polyline);
+        const geometry = JSON.stringify(coordinates);
+        
+        console.log('Route calculated using Google Maps API');
+        return { distance, duration, geometry };
+      }
+    } catch (error) {
+      console.error('Google Maps route calculation failed, trying OpenRouteService:', error);
+    }
   }
   
-  // Try to use OpenRouteService API
-  try {
-    const response = await fetch(
-      `https://api.openrouteservice.org/v2/directions/driving-car?start=${fromLng},${fromLat}&end=${toLng},${toLat}`,
-      {
-        headers: {
-          'Authorization': apiKey,
-          'Accept': 'application/json',
-        },
-      }
-    );
-    
-    if (!response.ok) throw new Error('API request failed');
-    
-    const data = await response.json();
-    const distance = Math.round(data.features[0].properties.segments[0].distance / 1000); // m to km
-    const duration = Math.round(data.features[0].properties.segments[0].duration / 60); // s to min
-    const geometry = JSON.stringify(data.features[0].geometry.coordinates); // Array of [lng, lat] pairs
-    
-    return { distance, duration, geometry };
-  } catch (error) {
-    console.error('Route calculation failed, using fallback:', error);
-    const distance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
-    const duration = Math.round(distance / 80);
-    const geometry = JSON.stringify([[fromLng, fromLat], [toLng, toLat]]);
-    return { distance, duration, geometry };
+  // Try OpenRouteService if Google Maps failed or no key provided
+  if (openRouteServiceKey) {
+    try {
+      const response = await fetch(
+        `https://api.openrouteservice.org/v2/directions/driving-car?start=${fromLng},${fromLat}&end=${toLng},${toLat}`,
+        {
+          headers: {
+            'Authorization': openRouteServiceKey,
+            'Accept': 'application/json',
+          },
+        }
+      );
+      
+      if (!response.ok) throw new Error('OpenRouteService API request failed');
+      
+      const data = await response.json();
+      const distance = Math.round(data.features[0].properties.segments[0].distance / 1000); // m to km
+      const duration = Math.round(data.features[0].properties.segments[0].duration / 60); // s to min
+      const geometry = JSON.stringify(data.features[0].geometry.coordinates); // Array of [lng, lat] pairs
+      
+      console.log('Route calculated using OpenRouteService API');
+      return { distance, duration, geometry };
+    } catch (error) {
+      console.error('OpenRouteService route calculation failed, using fallback:', error);
+    }
   }
+  
+  // Fallback to mock data with simple straight line geometry
+  console.log('Using fallback Haversine distance calculation');
+  const distance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
+  const duration = Math.round(distance / 80); // Assume 80 km/h average
+  const geometry = JSON.stringify([[fromLng, fromLat], [toLng, toLat]]);
+  return { distance, duration, geometry };
+}
+
+// Helper function to decode Google Maps polyline format to coordinates
+function decodePolyline(encoded: string): [number, number][] {
+  const coordinates: [number, number][] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    let b;
+    let shift = 0;
+    let result = 0;
+
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+
+    const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+
+    const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lng += dlng;
+
+    coordinates.push([lng / 1e5, lat / 1e5]); // [lng, lat] format for GeoJSON
+  }
+
+  return coordinates;
 }
 
 async function fetchWeather(
