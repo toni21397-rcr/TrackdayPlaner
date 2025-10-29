@@ -1,0 +1,85 @@
+Copy-paste to Replit Agent
+
+Great — now please implement it end-to-end.
+Do the following:
+
+Scaffold & run
+
+Create a Node.js + Express + SQLite backend and a React + Tailwind frontend (TypeScript).
+
+Add REST endpoints for: trackdays, cost items, vehicles, maintenance, routes (recalculate), weather (cache 6h), summary, export CSV.
+
+Start both dev servers concurrently and print the local URLs for API and frontend.
+
+Minimal schema
+
+tracks(id, name, country, lat, lng)
+
+trackdays(id, trackId, date, durationDays, vehicleId, notes, participationStatus)
+
+cost_items(id, trackdayId, type, amountCents, currency, status, dueDate, paidAt, notes, isTravelAuto)
+
+vehicles(id, name, type, fuelType, consumptionPer100, notes)
+
+maintenance_logs(id, vehicleId, date, type, costCents, odometerKm, notes)
+
+trackday_schedule_blocks(id, trackdayId, startTime, endTime, title, type, notes)
+
+track_sessions(id, trackdayId, name, startTime, endTime, bestLapMs, notes)
+
+laps(id, sessionId, lapNumber, lapTimeMs, sectorTimesMsJson, valid)
+
+settings(singleton: currency, homeLat, homeLng, fuelPricePerLitre, tollsPerKm, annualBudgetCents)
+
+Features to build now
+
+Trackdays CRUD with participation: planned/registered/attended/cancelled.
+
+Costs with payment states: planned/invoiced/paid/refunded.
+
+Budget: dashboard cards for Projected / Spent / Remaining + monthly spend chart.
+
+Route calc (OpenRouteService; fallback mock if no key): distance, duration, fuel+tolls estimate stored on the trackday and as cost items (isTravelAuto=true).
+
+Vehicles & maintenance: simple CRUD + yearly maintenance total on dashboard.
+
+Weather (OpenWeather; show widget on trackday; mock if no key).
+
+Timeline & laps: day schedule blocks; sessions with lap table (manual add + CSV import), show best lap.
+
+Filters: by year, participation, payment state.
+
+CSV export: yearly summary + laps export per session.
+
+Pages
+
+/ dashboard (KPIs, budget bar, monthly chart, upcoming trackdays)
+
+/trackdays list + filters + “Add”
+
+/trackdays/:id detail (costs with statuses, route card, weather, timeline, sessions/laps)
+
+/tracks CRUD with map picker
+
+/vehicles CRUD + maintenance
+
+/map overview of routes
+
+/settings (currency CHF, fuel price, consumption, tolls/km, home location, API keys)
+
+Seed data
+
+Settings: Zurich (47.3769, 8.5417), CHF, fuel 1.90, consumption 6.5, tolls 0.05, budget 500000 (CHF 5,000).
+
+Tracks: Spa, Mugello, Nürburgring (with approximate lat/lng).
+
+Trackdays:
+
+One planned/registered (with entry=planned 350 CHF, hotel=planned 120 CHF).
+
+One attended (with paid costs + a few laps).
+
+One default vehicle (Bike).
+
+ENV & fallback
+Create .env:

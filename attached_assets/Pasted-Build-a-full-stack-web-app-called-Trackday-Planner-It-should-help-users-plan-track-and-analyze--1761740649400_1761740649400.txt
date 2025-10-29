@@ -1,0 +1,156 @@
+Build a full-stack web app called “Trackday Planner”.
+It should help users plan, track, and analyze their yearly trackdays — including costs, routes, budgets, and performance.
+
+⚙️ Stack
+
+Node.js + Express backend
+
+SQLite database
+
+React + Tailwind frontend
+
+TypeScript
+
+Simple REST API
+
+Map & routing via OpenRouteService or Mapbox (configurable via .env)
+
+🎯 Core Features
+1. Trackday Management
+
+Add, edit, and delete trackdays.
+
+Fields: track name, date, duration, vehicle, notes, participation status (planned, registered, attended, cancelled).
+
+Attach cost items (entry, travel, hotel, tires, etc.) with payment status (planned, invoiced, paid, refunded).
+
+Mark events as planned / paid / participated and show colored badges in the list.
+
+Show totals for Projected / Spent / Remaining costs per year.
+
+2. Cost Tracking & Budget
+
+Add multiple cost items per trackday with notes and payment state.
+
+Annual budget setting (CHF).
+
+Dashboard shows:
+
+Total events, total cost, spent vs planned, remaining budget.
+
+Monthly bar chart of spending.
+
+CSV export with all costs and summaries.
+
+3. Route Planner & Travel Costs
+
+Set home location (default Zurich).
+
+Each track has GPS coordinates.
+
+Auto-calculate travel route distance, duration, and estimated fuel + toll cost.
+
+Formula: fuel cost = distance × (consumption / 100) × fuel price.
+
+Show travel distance and cost per trackday and in yearly totals.
+
+4. Vehicles & Maintenance
+
+Manage multiple vehicles (bike, car, etc.) with consumption, fuel type, and notes.
+
+Maintenance log for each vehicle (oil, tires, service, etc.) with date and cost.
+
+Dashboard card: yearly maintenance total.
+
+5. Weather Forecast
+
+Show weather for each trackday (temperature, rain chance, wind) using OpenWeather API.
+
+Auto-refresh or manual “check weather” button.
+
+6. Trackday Timeline & Sessions
+
+For each trackday, show a daily schedule (registration, sessions, breaks, etc.) in a visual timeline.
+
+Add sessions and laps:
+
+Record lap times manually or via CSV import.
+
+Show best lap, average, and trend line.
+
+Optional notes for each session.
+
+7. Overview & Analytics
+
+Dashboard: KPIs + budget progress + charts.
+
+Trackday list: filter by year, participation, or payment status.
+
+Map view: shows tracks, routes, and distances.
+
+Export summary as CSV.
+
+🗺️ Pages
+
+/ Dashboard
+
+/trackdays list + filters
+
+/trackdays/:id details (costs, schedule, sessions, weather, route)
+
+/tracks CRUD with map picker
+
+/vehicles CRUD + maintenance log
+
+/map routes overview
+
+/settings for currency, fuel price, consumption, budget, API keys
+
+🧠 Smart & Simple UX
+
+Mobile-friendly, clean layout, dark/light mode.
+
+One floating “+” button for adding items.
+
+Inline editing and undo toast for actions.
+
+Clear labels like “Planned”, “Paid”, “Attended”.
+
+Tooltips for cost types and statuses.
+
+Empty states with quick actions (“Add your first trackday!”).
+
+🧾 Example Data (seed)
+
+3 popular tracks (Spa, Mugello, Nürburgring).
+
+2 sample trackdays (one planned, one attended).
+
+1 default vehicle (Bike, 6.5L/100km).
+
+Default settings:
+
+Home: Zurich (47.3769, 8.5417)
+
+Fuel price: 1.90 CHF/L
+
+Budget: 5000 CHF
+
+✅ Acceptance
+
+I can add trackdays, costs, vehicles, and maintenance.
+
+I can mark a trackday as planned, paid, or attended.
+
+Travel route cost is auto-calculated.
+
+Weather and budget display correctly.
+
+Dashboard shows yearly totals and progress bar.
+
+Timeline and laps work intuitively.
+
+The app looks clean and easy to use.
+
+Please build this app now.
+Start both backend and frontend, seed example data, and show the local URLs when ready.
