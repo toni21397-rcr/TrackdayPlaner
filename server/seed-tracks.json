@@ -1,518 +1,148 @@
 [
-  {
-    "name": "Circuit de Spa-Francorchamps",
-    "country": "Belgium",
-    "lat": 50.4357,
-    "lng": 5.9695
-  },
-  {
-    "name": "Nürburgring",
-    "country": "Germany",
-    "lat": 50.3314,
-    "lng": 6.9383
-  },
-  {
-    "name": "Silverstone Circuit",
-    "country": "United Kingdom",
-    "lat": 52.0733,
-    "lng": -1.0147
-  },
-  {
-    "name": "Autodromo Nazionale di Monza",
-    "country": "Italy",
-    "lat": 45.6190,
-    "lng": 9.2870
-  },
-  {
-    "name": "Circuit of the Americas",
-    "country": "United States",
-    "lat": 30.1339,
-    "lng": -97.6411
-  },
-  {
-    "name": "Laguna Seca Raceway",
-    "country": "United States",
-    "lat": 36.5833,
-    "lng": -121.7513
-  },
-  {
-    "name": "Circuit Paul Ricard",
-    "country": "France",
-    "lat": 43.2516,
-    "lng": 5.7912
-  },
-  {
-    "name": "Red Bull Ring",
-    "country": "Austria",
-    "lat": 47.2192,
-    "lng": 14.7647
-  },
-  {
-    "name": "Circuit Zandvoort",
-    "country": "Netherlands",
-    "lat": 52.3888,
-    "lng": 4.5408
-  },
-  {
-    "name": "Autodromo di Imola",
-    "country": "Italy",
-    "lat": 44.3441,
-    "lng": 11.7133
-  },
-  {
-    "name": "Brands Hatch Circuit",
-    "country": "United Kingdom",
-    "lat": 51.3569,
-    "lng": 0.2631
-  },
-  {
-    "name": "Donington Park Circuit",
-    "country": "United Kingdom",
-    "lat": 52.8313,
-    "lng": -1.3758
-  },
-  {
-    "name": "Oulton Park Circuit",
-    "country": "United Kingdom",
-    "lat": 53.1778,
-    "lng": -2.6181
-  },
-  {
-    "name": "Snetterton Circuit",
-    "country": "United Kingdom",
-    "lat": 52.4619,
-    "lng": 0.9444
-  },
-  {
-    "name": "Thruxton Motorsport Centre",
-    "country": "United Kingdom",
-    "lat": 51.2011,
-    "lng": -1.6042
-  },
-  {
-    "name": "Cadwell Park Circuit",
-    "country": "United Kingdom",
-    "lat": 53.2992,
-    "lng": -0.0492
-  },
-  {
-    "name": "Goodwood Motor Circuit",
-    "country": "United Kingdom",
-    "lat": 50.8607,
-    "lng": -0.7542
-  },
-  {
-    "name": "Castle Combe Race Circuit",
-    "country": "United Kingdom",
-    "lat": 51.4900,
-    "lng": -2.2056
-  },
-  {
-    "name": "Pembrey Circuit",
-    "country": "United Kingdom",
-    "lat": 51.7172,
-    "lng": -4.3383
-  },
-  {
-    "name": "Mallory Park Circuit",
-    "country": "United Kingdom",
-    "lat": 52.6328,
-    "lng": -1.3436
-  },
-  {
-    "name": "Rockingham Speedway",
-    "country": "United Kingdom",
-    "lat": 52.5267,
-    "lng": -0.6806
-  },
-  {
-    "name": "Anglesey Circuit",
-    "country": "United Kingdom",
-    "lat": 53.2250,
-    "lng": -4.5219
-  },
-  {
-    "name": "Mondello Park",
-    "country": "Ireland",
-    "lat": 53.2983,
-    "lng": -6.7958
-  },
-  {
-    "name": "Knockhill Racing Circuit",
-    "country": "United Kingdom",
-    "lat": 56.0828,
-    "lng": -3.4678
-  },
-  {
-    "name": "Croft Circuit",
-    "country": "United Kingdom",
-    "lat": 54.4600,
-    "lng": -1.5569
-  },
-  {
-    "name": "Hockenheimring",
-    "country": "Germany",
-    "lat": 49.3278,
-    "lng": 8.5656
-  },
-  {
-    "name": "Sachsenring",
-    "country": "Germany",
-    "lat": 50.7906,
-    "lng": 12.8750
-  },
-  {
-    "name": "Lausitzring",
-    "country": "Germany",
-    "lat": 51.5408,
-    "lng": 14.1439
-  },
-  {
-    "name": "Circuit de Barcelona-Catalunya",
-    "country": "Spain",
-    "lat": 41.5700,
-    "lng": 2.2586
-  },
-  {
-    "name": "Circuit Ricardo Tormo - Valencia",
-    "country": "Spain",
-    "lat": 39.4889,
-    "lng": -0.6311
-  },
-  {
-    "name": "Circuit de Jerez Angel Nieto",
-    "country": "Spain",
-    "lat": 36.7086,
-    "lng": -6.0333
-  },
-  {
-    "name": "Autodromo Algarve - Portimao",
-    "country": "Portugal",
-    "lat": 37.2275,
-    "lng": -8.6269
-  },
-  {
-    "name": "Circuit do Estoril",
-    "country": "Portugal",
-    "lat": 38.7506,
-    "lng": -9.3939
-  },
-  {
-    "name": "Circuit de Magny Cours - Grand Prix Track",
-    "country": "France",
-    "lat": 46.8642,
-    "lng": 3.1631
-  },
-  {
-    "name": "Circuit Bugatti - Le Mans",
-    "country": "France",
-    "lat": 47.9569,
-    "lng": 0.2247
-  },
-  {
-    "name": "Circuit d'Albi",
-    "country": "France",
-    "lat": 43.9167,
-    "lng": 2.1333
-  },
-  {
-    "name": "Circuit de Ledenon",
-    "country": "France",
-    "lat": 43.9167,
-    "lng": 4.5000
-  },
-  {
-    "name": "Circuit Dijon Prenois",
-    "country": "France",
-    "lat": 47.3625,
-    "lng": 4.8986
-  },
-  {
-    "name": "Anneau du Rhin",
-    "country": "France",
-    "lat": 48.7167,
-    "lng": 7.7833
-  },
-  {
-    "name": "Autodromo del Mugello",
-    "country": "Italy",
-    "lat": 43.9978,
-    "lng": 11.3719
-  },
-  {
-    "name": "Misano World Circuit",
-    "country": "Italy",
-    "lat": 43.9517,
-    "lng": 12.6853
-  },
-  {
-    "name": "Piero Taruffi - Vallelunga",
-    "country": "Italy",
-    "lat": 42.2469,
-    "lng": 12.3242
-  },
-  {
-    "name": "Adria International Raceway",
-    "country": "Italy",
-    "lat": 45.0192,
-    "lng": 11.9606
-  },
-  {
-    "name": "Autodromo di Modena",
-    "country": "Italy",
-    "lat": 44.5800,
-    "lng": 10.9200
-  },
-  {
-    "name": "TT Circuit Assen",
-    "country": "Netherlands",
-    "lat": 52.9597,
-    "lng": 6.6178
-  },
-  {
-    "name": "Circuit Zolder",
-    "country": "Belgium",
-    "lat": 50.9889,
-    "lng": 5.2556
-  },
-  {
-    "name": "Hungaroring",
-    "country": "Hungary",
-    "lat": 47.5789,
-    "lng": 19.2508
-  },
-  {
-    "name": "Red Star Raceway",
-    "country": "South Africa",
-    "lat": -26.5814,
-    "lng": 28.3667
-  },
-  {
-    "name": "Kyalami Grand Prix Circuit",
-    "country": "South Africa",
-    "lat": -25.9894,
-    "lng": 28.0706
-  },
-  {
-    "name": "Suzuka Circuit",
-    "country": "Japan",
-    "lat": 34.8431,
-    "lng": 136.5408
-  },
-  {
-    "name": "Fuji International Speedway",
-    "country": "Japan",
-    "lat": 35.3686,
-    "lng": 138.9275
-  },
-  {
-    "name": "Twin Ring Motegi Circuit",
-    "country": "Japan",
-    "lat": 36.5397,
-    "lng": 140.2292
-  },
-  {
-    "name": "Okayama International Circuit",
-    "country": "Japan",
-    "lat": 34.9150,
-    "lng": 134.2208
-  },
-  {
-    "name": "Tsukuba Circuit - Course 2000",
-    "country": "Japan",
-    "lat": 36.1856,
-    "lng": 140.0678
-  },
-  {
-    "name": "Sepang International Circuit",
-    "country": "Malaysia",
-    "lat": 2.7608,
-    "lng": 101.7381
-  },
-  {
-    "name": "Yas Marina Circuit",
-    "country": "United Arab Emirates",
-    "lat": 24.4672,
-    "lng": 54.6031
-  },
-  {
-    "name": "Dubai Autodrome",
-    "country": "United Arab Emirates",
-    "lat": 25.0927,
-    "lng": 55.4051
-  },
-  {
-    "name": "Bahrain International Circuit",
-    "country": "Bahrain",
-    "lat": 26.0325,
-    "lng": 50.5106
-  },
-  {
-    "name": "Losail International Circuit",
-    "country": "Qatar",
-    "lat": 25.4900,
-    "lng": 51.4533
-  },
-  {
-    "name": "Shanghai International Circuit",
-    "country": "China",
-    "lat": 31.3389,
-    "lng": 121.2197
-  },
-  {
-    "name": "Autodromo Hermanos Rodriguez",
-    "country": "Mexico",
-    "lat": 19.4042,
-    "lng": -99.0908
-  },
-  {
-    "name": "Autodromo Jose C. Pace - Interlagos",
-    "country": "Brazil",
-    "lat": -23.7014,
-    "lng": -46.6972
-  },
-  {
-    "name": "Autodromo Internacional Nelson Piquet",
-    "country": "Brazil",
-    "lat": -7.1919,
-    "lng": -34.9089
-  },
-  {
-    "name": "Daytona International Speedway",
-    "country": "United States",
-    "lat": 29.1861,
-    "lng": -81.0711
-  },
-  {
-    "name": "Indianapolis Motor Speedway",
-    "country": "United States",
-    "lat": 39.7950,
-    "lng": -86.2350
-  },
-  {
-    "name": "Road America",
-    "country": "United States",
-    "lat": 43.7972,
-    "lng": -88.0069
-  },
-  {
-    "name": "Mid-Ohio Sports Car Course",
-    "country": "United States",
-    "lat": 40.5500,
-    "lng": -82.6917
-  },
-  {
-    "name": "Barber Motorsports Park",
-    "country": "United States",
-    "lat": 33.5467,
-    "lng": -86.5714
-  },
-  {
-    "name": "Sonoma Raceway",
-    "country": "United States",
-    "lat": 38.1614,
-    "lng": -122.4569
-  },
-  {
-    "name": "Virginia International Raceway",
-    "country": "United States",
-    "lat": 36.5808,
-    "lng": -79.2042
-  },
-  {
-    "name": "Watkins Glen International",
-    "country": "United States",
-    "lat": 42.3369,
-    "lng": -76.9275
-  },
-  {
-    "name": "Lime Rock Park",
-    "country": "United States",
-    "lat": 41.9278,
-    "lng": -73.3822
-  },
-  {
-    "name": "Sebring International Raceway",
-    "country": "United States",
-    "lat": 27.4508,
-    "lng": -81.3483
-  },
-  {
-    "name": "Homestead Miami Speedway",
-    "country": "United States",
-    "lat": 25.4517,
-    "lng": -80.4042
-  },
-  {
-    "name": "Canadian Tire Motorsports Park",
-    "country": "Canada",
-    "lat": 44.0683,
-    "lng": -78.6853
-  },
-  {
-    "name": "Philip Island Grand Prix Circuit",
-    "country": "Australia",
-    "lat": -38.5094,
-    "lng": 145.2286
-  },
-  {
-    "name": "Sydney Motorsport Park",
-    "country": "Australia",
-    "lat": -33.7983,
-    "lng": 150.7728
-  },
-  {
-    "name": "Brno Circuit",
-    "country": "Czech Republic",
-    "lat": 49.2122,
-    "lng": 16.5625
-  },
-  {
-    "name": "Slovakia Ring",
-    "country": "Slovakia",
-    "lat": 48.4089,
-    "lng": 21.4867
-  },
-  {
-    "name": "Autodrom Most",
-    "country": "Czech Republic",
-    "lat": 50.5200,
-    "lng": 13.6400
-  },
-  {
-    "name": "Michelin Raceway Road Atlanta",
-    "country": "United States",
-    "lat": 34.1506,
-    "lng": -83.7178
-  },
-  {
-    "name": "Buttonwillow Raceway Park",
-    "country": "United States",
-    "lat": 35.4169,
-    "lng": -119.4714
-  },
-  {
-    "name": "Willow Springs International Raceway",
-    "country": "United States",
-    "lat": 34.8944,
-    "lng": -117.9958
-  },
-  {
-    "name": "Thunderhill Raceway Park - East Track",
-    "country": "United States",
-    "lat": 39.5383,
-    "lng": -122.3042
-  },
-  {
-    "name": "Chuckwalla Valley Raceway",
-    "country": "United States",
-    "lat": 33.6261,
-    "lng": -115.4194
-  },
-  {
-    "name": "Mosport International Raceway",
-    "country": "Canada",
-    "lat": 44.0681,
-    "lng": -78.6856
-  }
+  {"name": "Circuit de Spa-Francorchamps", "country": "Belgium", "lat": 50.4357, "lng": 5.9695},
+  {"name": "Nürburgring", "country": "Germany", "lat": 50.3314, "lng": 6.9383},
+  {"name": "Silverstone Circuit", "country": "United Kingdom", "lat": 52.0733, "lng": -1.0147},
+  {"name": "Autodromo Nazionale di Monza", "country": "Italy", "lat": 45.6190, "lng": 9.2870},
+  {"name": "Circuit of the Americas", "country": "United States", "lat": 30.1339, "lng": -97.6411},
+  {"name": "Laguna Seca Raceway", "country": "United States", "lat": 36.5833, "lng": -121.7513},
+  {"name": "Circuit Paul Ricard", "country": "France", "lat": 43.2516, "lng": 5.7912},
+  {"name": "Red Bull Ring", "country": "Austria", "lat": 47.2192, "lng": 14.7647},
+  {"name": "Circuit Zandvoort", "country": "Netherlands", "lat": 52.3888, "lng": 4.5408},
+  {"name": "Autodromo di Imola", "country": "Italy", "lat": 44.3441, "lng": 11.7133},
+  {"name": "Brands Hatch Circuit", "country": "United Kingdom", "lat": 51.3569, "lng": 0.2631},
+  {"name": "Donington Park Circuit", "country": "United Kingdom", "lat": 52.8313, "lng": -1.3758},
+  {"name": "Oulton Park Circuit", "country": "United Kingdom", "lat": 53.1778, "lng": -2.6181},
+  {"name": "Snetterton Circuit", "country": "United Kingdom", "lat": 52.4619, "lng": 0.9444},
+  {"name": "Thruxton Motorsport Centre", "country": "United Kingdom", "lat": 51.2011, "lng": -1.6042},
+  {"name": "Cadwell Park Circuit", "country": "United Kingdom", "lat": 53.2992, "lng": -0.0492},
+  {"name": "Goodwood Motor Circuit", "country": "United Kingdom", "lat": 50.8607, "lng": -0.7542},
+  {"name": "Castle Combe Race Circuit", "country": "United Kingdom", "lat": 51.4900, "lng": -2.2056},
+  {"name": "Pembrey Circuit", "country": "United Kingdom", "lat": 51.7172, "lng": -4.3383},
+  {"name": "Mallory Park Circuit", "country": "United Kingdom", "lat": 52.6328, "lng": -1.3436},
+  {"name": "Rockingham Speedway", "country": "United Kingdom", "lat": 52.5267, "lng": -0.6806},
+  {"name": "Anglesey Circuit", "country": "United Kingdom", "lat": 53.2250, "lng": -4.5219},
+  {"name": "Mondello Park", "country": "Ireland", "lat": 53.2983, "lng": -6.7958},
+  {"name": "Knockhill Racing Circuit", "country": "United Kingdom", "lat": 56.0828, "lng": -3.4678},
+  {"name": "Croft Circuit", "country": "United Kingdom", "lat": 54.4600, "lng": -1.5569},
+  {"name": "Darley Moor Sports Centre", "country": "United Kingdom", "lat": 53.0150, "lng": -1.7450},
+  {"name": "Bishopscourt Racing Circuit", "country": "United Kingdom", "lat": 54.3800, "lng": -5.6200},
+  {"name": "Kirkistown Racing Circuit", "country": "United Kingdom", "lat": 54.4530, "lng": -5.4330},
+  {"name": "East Fortune Race Circuit", "country": "United Kingdom", "lat": 55.9200, "lng": -2.6800},
+  {"name": "Hockenheimring", "country": "Germany", "lat": 49.3278, "lng": 8.5656},
+  {"name": "Sachsenring", "country": "Germany", "lat": 50.7906, "lng": 12.8750},
+  {"name": "Lausitzring", "country": "Germany", "lat": 51.5408, "lng": 14.1439},
+  {"name": "Oschersleben", "country": "Germany", "lat": 52.0289, "lng": 11.2778},
+  {"name": "Circuit de Barcelona-Catalunya", "country": "Spain", "lat": 41.5700, "lng": 2.2586},
+  {"name": "Circuit Ricardo Tormo - Valencia", "country": "Spain", "lat": 39.4889, "lng": -0.6311},
+  {"name": "Circuit de Jerez Angel Nieto", "country": "Spain", "lat": 36.7086, "lng": -6.0333},
+  {"name": "Autodromo Algarve - Portimao", "country": "Portugal", "lat": 37.2275, "lng": -8.6269},
+  {"name": "Circuit do Estoril", "country": "Portugal", "lat": 38.7506, "lng": -9.3939},
+  {"name": "Circuit de Magny Cours - Grand Prix Track", "country": "France", "lat": 46.8642, "lng": 3.1631},
+  {"name": "Circuit Bugatti - Le Mans", "country": "France", "lat": 47.9569, "lng": 0.2247},
+  {"name": "Circuit d'Albi", "country": "France", "lat": 43.9167, "lng": 2.1333},
+  {"name": "Circuit de Ledenon", "country": "France", "lat": 43.9167, "lng": 4.5000},
+  {"name": "Circuit Dijon Prenois", "country": "France", "lat": 47.3625, "lng": 4.8986},
+  {"name": "Anneau du Rhin", "country": "France", "lat": 48.7167, "lng": 7.7833},
+  {"name": "Circuit Pau Arnos", "country": "France", "lat": 43.3300, "lng": -0.4000},
+  {"name": "Circuit Paul Armagnac - Nogaro", "country": "France", "lat": 43.7667, "lng": 0.0333},
+  {"name": "Autodromo del Mugello", "country": "Italy", "lat": 43.9978, "lng": 11.3719},
+  {"name": "Misano World Circuit", "country": "Italy", "lat": 43.9517, "lng": 12.6853},
+  {"name": "Piero Taruffi - Vallelunga", "country": "Italy", "lat": 42.2469, "lng": 12.3242},
+  {"name": "Adria International Raceway", "country": "Italy", "lat": 45.0192, "lng": 11.9606},
+  {"name": "Autodromo di Modena", "country": "Italy", "lat": 44.5800, "lng": 10.9200},
+  {"name": "Autodromo di Pergusa", "country": "Italy", "lat": 37.5167, "lng": 14.3000},
+  {"name": "Circuito Tazio Nuvolari", "country": "Italy", "lat": 45.2833, "lng": 11.2667},
+  {"name": "TT Circuit Assen", "country": "Netherlands", "lat": 52.9597, "lng": 6.6178},
+  {"name": "Circuit Zolder", "country": "Belgium", "lat": 50.9889, "lng": 5.2556},
+  {"name": "Hungaroring", "country": "Hungary", "lat": 47.5789, "lng": 19.2508},
+  {"name": "Red Star Raceway", "country": "South Africa", "lat": -26.5814, "lng": 28.3667},
+  {"name": "Kyalami Grand Prix Circuit", "country": "South Africa", "lat": -25.9894, "lng": 28.0706},
+  {"name": "Suzuka Circuit", "country": "Japan", "lat": 34.8431, "lng": 136.5408},
+  {"name": "Fuji International Speedway", "country": "Japan", "lat": 35.3686, "lng": 138.9275},
+  {"name": "Twin Ring Motegi Circuit", "country": "Japan", "lat": 36.5397, "lng": 140.2292},
+  {"name": "Okayama International Circuit", "country": "Japan", "lat": 34.9150, "lng": 134.2208},
+  {"name": "Tsukuba Circuit - Course 2000", "country": "Japan", "lat": 36.1856, "lng": 140.0678},
+  {"name": "Autopolis Int. Racing Course", "country": "Japan", "lat": 33.2833, "lng": 131.0500},
+  {"name": "Sepang International Circuit", "country": "Malaysia", "lat": 2.7608, "lng": 101.7381},
+  {"name": "Yas Marina Circuit", "country": "United Arab Emirates", "lat": 24.4672, "lng": 54.6031},
+  {"name": "Dubai Autodrome", "country": "United Arab Emirates", "lat": 25.0927, "lng": 55.4051},
+  {"name": "Bahrain International Circuit", "country": "Bahrain", "lat": 26.0325, "lng": 50.5106},
+  {"name": "Losail International Circuit", "country": "Qatar", "lat": 25.4900, "lng": 51.4533},
+  {"name": "Shanghai International Circuit", "country": "China", "lat": 31.3389, "lng": 121.2197},
+  {"name": "Korea International Circuit", "country": "South Korea", "lat": 34.7333, "lng": 126.4167},
+  {"name": "Autodromo Hermanos Rodriguez", "country": "Mexico", "lat": 19.4042, "lng": -99.0908},
+  {"name": "Autodromo Jose C. Pace - Interlagos", "country": "Brazil", "lat": -23.7014, "lng": -46.6972},
+  {"name": "Autodromo Internacional Nelson Piquet", "country": "Brazil", "lat": -7.1919, "lng": -34.9089},
+  {"name": "Autodromo Int. Termas de Rio Hondo", "country": "Argentina", "lat": -27.4833, "lng": -64.2667},
+  {"name": "Daytona International Speedway", "country": "United States", "lat": 29.1861, "lng": -81.0711},
+  {"name": "Indianapolis Motor Speedway", "country": "United States", "lat": 39.7950, "lng": -86.2350},
+  {"name": "Road America", "country": "United States", "lat": 43.7972, "lng": -88.0069},
+  {"name": "Mid-Ohio Sports Car Course", "country": "United States", "lat": 40.5500, "lng": -82.6917},
+  {"name": "Barber Motorsports Park", "country": "United States", "lat": 33.5467, "lng": -86.5714},
+  {"name": "Sonoma Raceway", "country": "United States", "lat": 38.1614, "lng": -122.4569},
+  {"name": "Virginia International Raceway", "country": "United States", "lat": 36.5808, "lng": -79.2042},
+  {"name": "Lime Rock Park", "country": "United States", "lat": 41.9278, "lng": -73.3822},
+  {"name": "Sebring International Raceway", "country": "United States", "lat": 27.4508, "lng": -81.3483},
+  {"name": "Homestead Miami Speedway", "country": "United States", "lat": 25.4517, "lng": -80.4042},
+  {"name": "Canadian Tire Motorsports Park", "country": "Canada", "lat": 44.0683, "lng": -78.6853},
+  {"name": "Philip Island Grand Prix Circuit", "country": "Australia", "lat": -38.5094, "lng": 145.2286},
+  {"name": "Sydney Motorsport Park", "country": "Australia", "lat": -33.7983, "lng": 150.7728},
+  {"name": "Brno Circuit", "country": "Czech Republic", "lat": 49.2122, "lng": 16.5625},
+  {"name": "Slovakia Ring", "country": "Slovakia", "lat": 48.4089, "lng": 21.4867},
+  {"name": "Autodrom Most", "country": "Czech Republic", "lat": 50.5200, "lng": 13.6400},
+  {"name": "Michelin Raceway Road Atlanta", "country": "United States", "lat": 34.1506, "lng": -83.7178},
+  {"name": "Buttonwillow Raceway Park", "country": "United States", "lat": 35.4169, "lng": -119.4714},
+  {"name": "Willow Springs International Raceway", "country": "United States", "lat": 34.8944, "lng": -117.9958},
+  {"name": "Thunderhill Raceway Park - East Track", "country": "United States", "lat": 39.5383, "lng": -122.3042},
+  {"name": "Chuckwalla Valley Raceway", "country": "United States", "lat": 33.6261, "lng": -115.4194},
+  {"name": "Mosport International Raceway", "country": "Canada", "lat": 44.0681, "lng": -78.6856},
+  {"name": "Circuit de Cartagena", "country": "Spain", "lat": 37.6667, "lng": -0.9833},
+  {"name": "Circuit de Albacete", "country": "Spain", "lat": 38.9833, "lng": -1.8500},
+  {"name": "Ciudad del Motor de Aragon", "country": "Spain", "lat": 41.4789, "lng": -0.5322},
+  {"name": "Circuit Calafat", "country": "Spain", "lat": 40.6667, "lng": 0.5000},
+  {"name": "Circuit de Navarra", "country": "Spain", "lat": 42.3167, "lng": -1.9667},
+  {"name": "Circuito del Jarama", "country": "Spain", "lat": 40.6167, "lng": -3.5667},
+  {"name": "Ascari Race Resort", "country": "Spain", "lat": 36.6833, "lng": -5.0000},
+  {"name": "Circuito de Almeria", "country": "Spain", "lat": 36.8333, "lng": -2.4667},
+  {"name": "Circuito de Braga", "country": "Portugal", "lat": 41.5500, "lng": -8.4167},
+  {"name": "Cremona Circuit", "country": "Italy", "lat": 45.1333, "lng": 10.0167},
+  {"name": "Autodromo di Varano de Melegari", "country": "Italy", "lat": 44.7500, "lng": 10.0833},
+  {"name": "Circuito di Pomposa", "country": "Italy", "lat": 44.7500, "lng": 12.1500},
+  {"name": "Autodromo del Volturno", "country": "Italy", "lat": 41.3333, "lng": 13.9667},
+  {"name": "Circuit Jules Tacheny - Mettet", "country": "Belgium", "lat": 50.3333, "lng": 4.6500},
+  {"name": "Circuit Goodyear", "country": "Belgium", "lat": 50.4667, "lng": 3.9667},
+  {"name": "Padborg Park", "country": "Denmark", "lat": 54.8333, "lng": 9.3667},
+  {"name": "Ring Knutstorp", "country": "Sweden", "lat": 55.9333, "lng": 13.1167},
+  {"name": "Anderstorp", "country": "Sweden", "lat": 57.2667, "lng": 13.6000},
+  {"name": "Mantorp Park", "country": "Sweden", "lat": 58.3167, "lng": 15.0500},
+  {"name": "Pannonia Ring", "country": "Hungary", "lat": 46.5833, "lng": 18.0333},
+  {"name": "Autodromo de Buenos Aires", "country": "Argentina", "lat": -34.6833, "lng": -58.4667},
+  {"name": "Autodromo de Curitiba", "country": "Brazil", "lat": -25.4833, "lng": -49.2667},
+  {"name": "Autodromo Velo Citta", "country": "Brazil", "lat": -23.5333, "lng": -46.4167},
+  {"name": "NOLA Motorsports", "country": "United States", "lat": 29.9167, "lng": -90.2667},
+  {"name": "Jennings GP", "country": "United States", "lat": 30.2500, "lng": -82.8667},
+  {"name": "Roebling Road Raceway", "country": "United States", "lat": 32.1667, "lng": -81.1500},
+  {"name": "Carolina Motorsports Park - CMP", "country": "United States", "lat": 34.6667, "lng": -80.2500},
+  {"name": "Atlanta Motorsports Park - ATMP", "country": "United States", "lat": 34.4667, "lng": -84.2167},
+  {"name": "Hallett Motor Racing Circuit", "country": "United States", "lat": 36.3833, "lng": -96.3333},
+  {"name": "Eagles Canyon Raceway", "country": "United States", "lat": 33.1333, "lng": -96.6667},
+  {"name": "MSR Houston", "country": "United States", "lat": 29.6167, "lng": -95.2500},
+  {"name": "NCM Motorsports Park", "country": "United States", "lat": 36.9000, "lng": -86.2167},
+  {"name": "Putnam Park Road Course", "country": "United States", "lat": 39.5500, "lng": -86.8167},
+  {"name": "Autobahn Country Club", "country": "United States", "lat": 42.3667, "lng": -88.3667},
+  {"name": "Blackhawk Farms Raceway", "country": "United States", "lat": 42.4333, "lng": -89.0167},
+  {"name": "Gingerman Raceway", "country": "United States", "lat": 42.3833, "lng": -86.2333},
+  {"name": "Grattan Raceway", "country": "United States", "lat": 43.0833, "lng": -85.2000},
+  {"name": "Pittsburgh Int. Race Complex", "country": "United States", "lat": 40.7500, "lng": -79.9167},
+  {"name": "Summit Point Motorsports Park", "country": "United States", "lat": 39.3167, "lng": -77.9333},
+  {"name": "New Jersey Motorsports Park - Lightning", "country": "United States", "lat": 39.3500, "lng": -75.2167},
+  {"name": "Palmer Motorsports Park", "country": "United States", "lat": 42.2000, "lng": -72.3167},
+  {"name": "Lime Rock Park", "country": "United States", "lat": 41.9278, "lng": -73.3822},
+  {"name": "Watkins Glen International", "country": "United States", "lat": 42.3369, "lng": -76.9275},
+  {"name": "Portland International Raceway", "country": "United States", "lat": 45.5972, "lng": -122.6944},
+  {"name": "Pacific Raceways", "country": "United States", "lat": 47.3000, "lng": -122.1500},
+  {"name": "The Ridge Motorsports Park", "country": "United States", "lat": 46.5833, "lng": -122.3000},
+  {"name": "Utah Motorsports Campus", "country": "United States", "lat": 40.5833, "lng": -112.3833},
+  {"name": "High Plains Raceway", "country": "United States", "lat": 40.1667, "lng": -104.2000},
+  {"name": "Pueblo Motorsport Park", "country": "United States", "lat": 38.2833, "lng": -104.6333}
 ]

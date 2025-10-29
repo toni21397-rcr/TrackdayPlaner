@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { seedTracks } from "./seed-tracks";
 import {
   insertTrackSchema,
   insertTrackdaySchema,
@@ -70,6 +71,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const deleted = await storage.deleteTrack(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Track not found" });
     res.json({ success: true });
+  });
+
+  // Seed tracks from comprehensive database
+  app.post("/api/seed-tracks", async (req, res) => {
+    try {
+      const result = await seedTracks(storage);
+      res.json({
+        message: `Successfully seeded ${result.added} tracks`,
+        ...result
+      });
+    } catch (error: any) {
+      console.error("Error seeding tracks:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // ============ TRACKDAYS ============

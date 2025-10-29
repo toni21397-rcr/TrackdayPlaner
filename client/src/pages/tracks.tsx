@@ -1,19 +1,48 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, MapPin } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Plus, MapPin, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
 import { TrackDialog } from "@/components/track-dialog";
 import type { Track } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function Tracks() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const { toast } = useToast();
 
   const { data: tracks, isLoading } = useQuery<Track[]>({
     queryKey: ["/api/tracks"],
+  });
+
+  const seedTracksMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/seed-tracks", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tracks"] });
+      toast({
+        title: "Tracks seeded successfully!",
+        description: `Added ${data.added} tracks, skipped ${data.skipped} existing tracks.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to seed tracks",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   return (
@@ -27,10 +56,21 @@ export default function Tracks() {
               Manage your race track locations
             </p>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-track">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Track
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => seedTracksMutation.mutate()}
+              disabled={seedTracksMutation.isPending}
+              data-testid="button-seed-tracks"
+            >
+              <Database className="w-4 h-4 mr-2" />
+              {seedTracksMutation.isPending ? "Seeding..." : "Load Tracks Database"}
+            </Button>
+            <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-track">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Track
+            </Button>
+          </div>
         </div>
 
         {/* Tracks Grid */}
