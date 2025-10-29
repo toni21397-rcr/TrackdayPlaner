@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -32,13 +33,34 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
 
   const form = useForm<InsertTrack>({
     resolver: zodResolver(insertTrackSchema),
-    defaultValues: track || {
+    defaultValues: {
       name: "",
       country: "",
       lat: 0,
       lng: 0,
     },
   });
+
+  // Reset form when track changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      if (track) {
+        form.reset({
+          name: track.name,
+          country: track.country,
+          lat: track.lat,
+          lng: track.lng,
+        });
+      } else {
+        form.reset({
+          name: "",
+          country: "",
+          lat: 0,
+          lng: 0,
+        });
+      }
+    }
+  }, [open, track, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: InsertTrack) => {
