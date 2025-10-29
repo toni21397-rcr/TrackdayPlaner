@@ -342,6 +342,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/laps/bulk", async (req, res) => {
+    try {
+      const { laps } = req.body;
+      if (!Array.isArray(laps)) {
+        return res.status(400).json({ error: "laps must be an array" });
+      }
+      
+      // Validate all laps
+      const validatedLaps = laps.map((lap, index) => {
+        try {
+          return insertLapSchema.parse(lap);
+        } catch (error: any) {
+          throw new Error(`Lap ${index + 1}: ${error.message}`);
+        }
+      });
+      
+      // Insert all laps
+      const createdLaps = await Promise.all(
+        validatedLaps.map(lap => storage.createLap(lap))
+      );
+      
+      res.json({ success: true, imported: createdLaps.length, laps: createdLaps });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // ============ SETTINGS ============
   app.get("/api/settings", async (req, res) => {
     const settings = await storage.getSettings();

@@ -21,6 +21,7 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { SessionDialog } from "@/components/session-dialog";
 import { LapDialog } from "@/components/lap-dialog";
+import { CSVImportDialog } from "@/components/csv-import-dialog";
 import type { TrackSession, Lap } from "@shared/schema";
 
 interface LapsTabProps {
@@ -31,6 +32,7 @@ export function LapsTab({ trackdayId }: LapsTabProps) {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
   const [isLapDialogOpen, setIsLapDialogOpen] = useState(false);
+  const [isCSVImportOpen, setIsCSVImportOpen] = useState(false);
 
   const { data: sessions } = useQuery<Array<TrackSession & { laps?: Lap[] }>>({
     queryKey: ["/api/sessions", trackdayId],
@@ -87,14 +89,25 @@ export function LapsTab({ trackdayId }: LapsTabProps) {
               New Session
             </Button>
             {selectedSessionId && (
-              <Button
-                onClick={() => setIsLapDialogOpen(true)}
-                size="sm"
-                data-testid="button-add-lap"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Lap
-              </Button>
+              <>
+                <Button
+                  onClick={() => setIsLapDialogOpen(true)}
+                  size="sm"
+                  data-testid="button-add-lap"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Lap
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsCSVImportOpen(true)}
+                  data-testid="button-import-csv"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import CSV
+                </Button>
+              </>
             )}
           </div>
         </CardHeader>
@@ -133,10 +146,6 @@ export function LapsTab({ trackdayId }: LapsTabProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" data-testid="button-import-csv">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Import CSV
-                  </Button>
                   <Button variant="outline" size="sm" data-testid="button-export-csv">
                     <Download className="w-4 h-4 mr-2" />
                     Export CSV
@@ -196,11 +205,18 @@ export function LapsTab({ trackdayId }: LapsTabProps) {
       />
 
       {selectedSessionId && (
-        <LapDialog
-          open={isLapDialogOpen}
-          onOpenChange={setIsLapDialogOpen}
-          sessionId={selectedSessionId}
-        />
+        <>
+          <LapDialog
+            open={isLapDialogOpen}
+            onOpenChange={setIsLapDialogOpen}
+            sessionId={selectedSessionId}
+          />
+          <CSVImportDialog
+            open={isCSVImportOpen}
+            onOpenChange={setIsCSVImportOpen}
+            sessionId={selectedSessionId}
+          />
+        </>
       )}
     </div>
   );
