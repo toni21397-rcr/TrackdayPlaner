@@ -68,8 +68,10 @@ Preferred communication style: Simple, everyday language.
 - Schema-first approach with createInsertSchema() generating Zod validators
 
 **Data Models:**
+- **users** - User authentication profiles (id, email, firstName, lastName, profileImageUrl, timestamps)
+- **sessions** - Express session storage (sid, sess, expire)
 - **tracks** - Race track locations with GPS coordinates
-- **trackdays** - Scheduled events with participation status (planned/registered/attended/cancelled)
+- **trackdays** - Scheduled events with participation status (planned/registered/attended/cancelled) and route geometry
 - **cost_items** - Line items with payment tracking (planned/invoiced/paid/refunded) and travel cost auto-generation
 - **vehicles** - User's vehicles with fuel consumption data
 - **maintenance_logs** - Service records tied to vehicles
@@ -83,9 +85,46 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication & Authorization
 
-**Current Implementation:** No authentication system present - application assumes single-user operation
+**Authentication System:** Replit Auth with OpenID Connect (supports Google, GitHub, and email/password)
 
-**Session Management:** connect-pg-simple installed but not currently configured, suggesting planned PostgreSQL-backed sessions for future multi-user support
+**Session Management:** 
+- PostgreSQL-backed sessions using connect-pg-simple
+- 7-day session TTL with automatic refresh
+- Secure cookies in production, non-secure in development
+- Sessions table auto-created on first use
+
+**Database Schema:**
+- **users** - User profiles with id (sub claim), email, firstName, lastName, profileImageUrl, timestamps
+- **sessions** - Express session storage (sid, sess JSON, expire timestamp)
+
+**Server Implementation:**
+- `server/replitAuth.ts` - OAuth setup, login/logout/callback routes, session configuration
+- `isAuthenticated` middleware - Protects routes, refreshes expired tokens automatically
+- Dynamic callback URLs - Adapts to HTTP (development) and HTTPS (production) with port preservation
+- Strategy caching - Separate strategies per protocol+host combination
+
+**Client Implementation:**
+- `useAuth()` hook - Checks authentication status, returns user profile
+- `isUnauthorizedError()` utility - Detects 401 errors for auth flow
+- `authUtils.ts` - Helper functions for authentication logic
+
+**API Endpoints:**
+- `GET /api/login` - Initiates OAuth flow with Replit Auth
+- `GET /api/callback` - OAuth callback, creates/updates user, establishes session
+- `GET /api/logout` - Destroys session, redirects to Replit logout
+- `GET /api/auth/user` - Returns authenticated user profile (protected)
+
+**Environment Variables:**
+- `REPL_ID` - Replit application ID (auto-provided in Replit environment)
+- `SESSION_SECRET` - Secret key for session encryption
+- `DATABASE_URL` - PostgreSQL connection string
+- `ISSUER_URL` - Optional OpenID Connect issuer override (defaults to Replit Auth)
+
+**Future Collaboration Features:**
+- Trackday sharing and invite links
+- Permission system (owner/editor/viewer roles)
+- Activity tracking and collaboration feed
+- Multi-user access control
 
 ### External Dependencies
 

@@ -13,6 +13,7 @@ import type {
   Lap, InsertLap,
   Settings, InsertSettings,
   WeatherCache,
+  User, UpsertUser,
 } from "@shared/schema";
 import {
   tracks,
@@ -25,6 +26,7 @@ import {
   laps,
   settings as settingsTable,
   weatherCache as weatherCacheTable,
+  users,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -80,6 +82,10 @@ export interface IStorage {
   // Weather Cache
   getWeatherCache(trackdayId: string): Promise<WeatherCache | undefined>;
   setWeatherCache(data: WeatherCache): Promise<WeatherCache>;
+
+  // Users (Replit Auth integration)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
 }
 
 export class MemStorage implements IStorage {
@@ -408,6 +414,15 @@ export class MemStorage implements IStorage {
   async setWeatherCache(data: WeatherCache): Promise<WeatherCache> {
     this.weatherCache.set(data.trackdayId, data);
     return data;
+  }
+
+  // ========== USERS (Replit Auth integration) ==========
+  async getUser(id: string): Promise<User | undefined> {
+    throw new Error("User operations not implemented in MemStorage");
+  }
+
+  async upsertUser(user: UpsertUser): Promise<User> {
+    throw new Error("User operations not implemented in MemStorage");
   }
 }
 
@@ -767,6 +782,29 @@ export class DbStorage implements IStorage {
       })
       .returning();
     return result[0];
+  }
+
+  // ========== USERS (Replit Auth integration) ==========
+  async getUser(id: string): Promise<User | undefined> {
+    await this.ensureInitialized();
+    const [user] = await this.db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    await this.ensureInitialized();
+    const [user] = await this.db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
   }
 }
 

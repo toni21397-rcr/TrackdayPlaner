@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
-import { pgTable, varchar, text, integer, real, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, integer, real, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Enums for type safety
@@ -400,3 +400,29 @@ export const weatherCache = pgTable("weather_cache", {
   windSpeed: real("wind_speed").notNull(),
   description: varchar("description", { length: 255 }).notNull(),
 });
+
+// ============= AUTHENTICATION =============
+// Replit Auth integration - Session storage table
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// Replit Auth integration - User storage table
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
