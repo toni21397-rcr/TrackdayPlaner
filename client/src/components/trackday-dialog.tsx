@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUpDown } from "lucide-react";
 import {
@@ -54,6 +55,8 @@ interface TrackdayDialogProps {
 export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogProps) {
   const { toast } = useToast();
   const [trackSearchOpen, setTrackSearchOpen] = useState(false);
+  const [trackSearch, setTrackSearch] = useState("");
+  const [entryFeeDisplay, setEntryFeeDisplay] = useState<string>("");
 
   const { data: tracks } = useQuery<Track[]>({
     queryKey: ["/api/tracks"],
@@ -63,32 +66,87 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
     queryKey: ["/api/vehicles"],
   });
 
-  const form = useForm<InsertTrackday>({
-    resolver: zodResolver(insertTrackdaySchema),
-    defaultValues: trackday || {
+  // Extended form with entry fee field
+  const formSchema = insertTrackdaySchema.extend({
+    entryFeeCents: z.number().min(0).optional(),
+  });
+
+  type ExtendedTrackday = z.infer<typeof formSchema>;
+
+  // Reset entry fee display when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setEntryFeeDisplay("");
+      setTrackSearch("");
+    }
+  }, [open]);
+
+  const form = useForm<ExtendedTrackday>({
+    resolver: zodResolver(formSchema),
+    defaultValues: trackday ? {
+      trackId: trackday.trackId,
+      date: trackday.date,
+      durationDays: trackday.durationDays,
+      vehicleId: trackday.vehicleId,
+      notes: trackday.notes,
+      participationStatus: trackday.participationStatus,
+      entryFeeCents: undefined,
+    } : {
       trackId: "",
       date: new Date().toISOString().split("T")[0],
       durationDays: 1,
       vehicleId: null,
       notes: "",
       participationStatus: "planned",
+      entryFeeCents: undefined,
     },
   });
 
+  // Filter tracks based on search
+  const filteredTracks = tracks?.filter((track) => {
+    if (!trackSearch) return true;
+    const searchLower = trackSearch.toLowerCase();
+    const nameMatch = track.name.toLowerCase().includes(searchLower);
+    const countryMatch = track.country.toLowerCase().includes(searchLower);
+    return nameMatch || countryMatch;
+  }) || [];
+
   const mutation = useMutation({
-    mutationFn: async (data: InsertTrackday) => {
+    mutationFn: async (data: ExtendedTrackday) => {
+      const { entryFeeCents, ...trackdayData } = data;
+      
       if (trackday) {
-        return apiRequest("PATCH", `/api/trackdays/${trackday.id}`, data);
+        const patchRes = await apiRequest("PATCH", `/api/trackdays/${trackday.id}`, trackdayData);
+        return await patchRes.json();
       }
-      return apiRequest("POST", "/api/trackdays", data);
+      
+      const createdRes = await apiRequest("POST", "/api/trackdays", trackdayData);
+      const created = await createdRes.json();
+      
+      // Create entry fee cost item if provided
+      if (entryFeeCents && entryFeeCents > 0 && created?.id) {
+        await apiRequest("POST", "/api/cost-items", {
+          trackdayId: created.id,
+          type: "entry",
+          amountCents: entryFeeCents,
+          currency: "CHF",
+          status: "planned",
+          notes: "Track day entry fee",
+          isTravelAuto: false,
+        });
+      }
+      
+      return created;
     },
     onSuccess: async (savedTrackday: any) => {
+      const trackdayId = savedTrackday?.id || trackday?.id;
+      
       queryClient.invalidateQueries({ queryKey: ["/api/trackdays"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trackdays/upcoming"] });
       queryClient.invalidateQueries({ queryKey: ["/api/summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cost-items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cost-items", trackdayId] });
       
-      // Get the trackday ID (either new or existing)
-      const trackdayId = savedTrackday?.id || trackday?.id;
       
       // Check if track or vehicle changed (for updates)
       const trackChanged = trackday && trackday.trackId !== savedTrackday?.trackId;
@@ -131,6 +189,8 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
       
       onOpenChange(false);
       form.reset();
+      setEntryFeeDisplay("");
+      setTrackSearch("");
     },
     onError: () => {
       toast({
@@ -176,18 +236,24 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-[400px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search tracks..." data-testid="input-track-search" />
+                      <Command shouldFilter={false}>
+                        <CommandInput 
+                          placeholder="Search tracks..." 
+                          data-testid="input-track-search"
+                          value={trackSearch}
+                          onValueChange={setTrackSearch}
+                        />
                         <CommandList>
                           <CommandEmpty>No track found.</CommandEmpty>
                           <CommandGroup>
-                            {tracks?.map((track) => (
+                            {filteredTracks.map((track) => (
                               <CommandItem
                                 key={track.id}
-                                value={`${track.name} ${track.country}`}
+                                value={track.id}
                                 onSelect={() => {
                                   form.setValue("trackId", track.id);
                                   setTrackSearchOpen(false);
+                                  setTrackSearch("");
                                 }}
                                 data-testid={`track-option-${track.id}`}
                               >
@@ -302,6 +368,35 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
                 )}
               />
             </div>
+
+            {!trackday && (
+              <FormField
+                control={form.control}
+                name="entryFeeCents"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Entry Fee (optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        step="0.01"
+                        value={entryFeeDisplay}
+                        onChange={(e) => {
+                          setEntryFeeDisplay(e.target.value);
+                        }}
+                        onBlur={() => {
+                          const value = entryFeeDisplay ? Math.round(parseFloat(entryFeeDisplay) * 100) : undefined;
+                          field.onChange(value);
+                        }}
+                        data-testid="input-entry-fee"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
