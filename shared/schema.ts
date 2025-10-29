@@ -242,6 +242,23 @@ export const insertLapSchema = z.object({
 
 export type InsertLap = z.infer<typeof insertLapSchema>;
 
+// ============= BOOKING DRAFTS =============
+export interface BookingDraft {
+  id: string;
+  trackId: string;
+  status: string;
+  capturedFields: Record<string, any>; // Flexible JSON object for captured booking data
+  updatedAt: Date;
+}
+
+export const insertBookingDraftSchema = z.object({
+  trackId: z.string().min(1, "Track is required"),
+  status: z.string().default("draft"),
+  capturedFields: z.record(z.any()).default({}),
+});
+
+export type InsertBookingDraft = z.infer<typeof insertBookingDraftSchema>;
+
 // ============= SETTINGS (Singleton) =============
 export interface Settings {
   id: string; // singleton, always "default"
@@ -386,6 +403,14 @@ export const laps = pgTable("laps", {
   lapTimeMs: integer("lap_time_ms").notNull(),
   sectorTimesMsJson: text("sector_times_ms_json"),
   valid: boolean("valid").notNull().default(true),
+});
+
+export const bookingDrafts = pgTable("booking_drafts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trackId: varchar("track_id").notNull().references(() => tracks.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 50 }).notNull().default("draft"),
+  capturedFields: jsonb("captured_fields").notNull().default('{}'),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const settings = pgTable("settings", {
