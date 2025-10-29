@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { seedTracks } from "./seed-tracks";
 import {
+  insertOrganizerSchema,
   insertTrackSchema,
   insertTrackdaySchema,
   insertCostItemSchema,
@@ -32,6 +33,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
+  });
+
+  // ============ ORGANIZERS ============
+  app.get("/api/organizers", async (req, res) => {
+    const organizers = await storage.getOrganizers();
+    res.json(organizers);
+  });
+
+  app.get("/api/organizers/:id", async (req, res) => {
+    const organizer = await storage.getOrganizer(req.params.id);
+    if (!organizer) return res.status(404).json({ error: "Organizer not found" });
+    res.json(organizer);
+  });
+
+  app.post("/api/organizers", async (req, res) => {
+    try {
+      const data = insertOrganizerSchema.parse(req.body);
+      const organizer = await storage.createOrganizer(data);
+      res.json(organizer);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/organizers/:id", async (req, res) => {
+    try {
+      const data = insertOrganizerSchema.parse(req.body);
+      const organizer = await storage.updateOrganizer(req.params.id, data);
+      if (!organizer) return res.status(404).json({ error: "Organizer not found" });
+      res.json(organizer);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/organizers/:id", async (req, res) => {
+    const deleted = await storage.deleteOrganizer(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Organizer not found" });
+    res.json({ success: true });
   });
 
   // ============ TRACKS ============

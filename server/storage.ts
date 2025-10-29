@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq, and, sql as drizzleSql } from "drizzle-orm";
 import type {
+  Organizer, InsertOrganizer,
   Track, InsertTrack,
   Trackday, InsertTrackday,
   CostItem, InsertCostItem,
@@ -16,6 +17,7 @@ import type {
   User, UpsertUser,
 } from "@shared/schema";
 import {
+  organizers,
   tracks,
   trackdays,
   costItems,
@@ -30,6 +32,13 @@ import {
 } from "@shared/schema";
 
 export interface IStorage {
+  // Organizers
+  getOrganizers(): Promise<Organizer[]>;
+  getOrganizer(id: string): Promise<Organizer | undefined>;
+  createOrganizer(data: InsertOrganizer): Promise<Organizer>;
+  updateOrganizer(id: string, data: InsertOrganizer): Promise<Organizer | undefined>;
+  deleteOrganizer(id: string): Promise<boolean>;
+
   // Tracks
   getTracks(): Promise<Track[]>;
   getTrack(id: string): Promise<Track | undefined>;
@@ -89,6 +98,7 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  private organizers: Map<string, Organizer> = new Map();
   private tracks: Map<string, Track> = new Map();
   private trackdays: Map<string, Trackday> = new Map();
   private costItems: Map<string, CostItem> = new Map();
@@ -122,9 +132,9 @@ export class MemStorage implements IStorage {
   private seedData() {
     // Seed 3 tracks
     const tracks = [
-      { name: "Spa-Francorchamps", country: "Belgium", lat: 50.4372, lng: 5.9714, organizerName: "", organizerWebsite: "" },
-      { name: "Nürburgring", country: "Germany", lat: 50.3356, lng: 6.9475, organizerName: "", organizerWebsite: "" },
-      { name: "Hockenheimring", country: "Germany", lat: 49.3278, lng: 8.5658, organizerName: "", organizerWebsite: "" },
+      { name: "Spa-Francorchamps", country: "Belgium", lat: 50.4372, lng: 5.9714, organizerId: null, organizerName: "", organizerWebsite: "" },
+      { name: "Nürburgring", country: "Germany", lat: 50.3356, lng: 6.9475, organizerId: null, organizerName: "", organizerWebsite: "" },
+      { name: "Hockenheimring", country: "Germany", lat: 49.3278, lng: 8.5658, organizerId: null, organizerName: "", organizerWebsite: "" },
     ];
     tracks.forEach(t => {
       const id = randomUUID();
@@ -179,6 +189,33 @@ export class MemStorage implements IStorage {
       isTravelAuto: false,
     };
     this.costItems.set(randomUUID(), { ...costItem1, id: randomUUID() });
+  }
+
+  // ========== ORGANIZERS ==========
+  async getOrganizers(): Promise<Organizer[]> {
+    return Array.from(this.organizers.values());
+  }
+
+  async getOrganizer(id: string): Promise<Organizer | undefined> {
+    return this.organizers.get(id);
+  }
+
+  async createOrganizer(data: InsertOrganizer): Promise<Organizer> {
+    const id = randomUUID();
+    const organizer: Organizer = { ...data, id };
+    this.organizers.set(id, organizer);
+    return organizer;
+  }
+
+  async updateOrganizer(id: string, data: InsertOrganizer): Promise<Organizer | undefined> {
+    if (!this.organizers.has(id)) return undefined;
+    const organizer: Organizer = { ...data, id };
+    this.organizers.set(id, organizer);
+    return organizer;
+  }
+
+  async deleteOrganizer(id: string): Promise<boolean> {
+    return this.organizers.delete(id);
   }
 
   // ========== TRACKS ==========
@@ -522,6 +559,36 @@ export class DbStorage implements IStorage {
       notes: "Early bird registration",
       isTravelAuto: false,
     });
+  }
+
+  // ========== ORGANIZERS ==========
+  async getOrganizers(): Promise<Organizer[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(organizers);
+  }
+
+  async getOrganizer(id: string): Promise<Organizer | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(organizers).where(eq(organizers.id, id));
+    return result[0];
+  }
+
+  async createOrganizer(data: InsertOrganizer): Promise<Organizer> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(organizers).values(data).returning();
+    return result[0];
+  }
+
+  async updateOrganizer(id: string, data: InsertOrganizer): Promise<Organizer | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.update(organizers).set(data).where(eq(organizers.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteOrganizer(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    await this.db.delete(organizers).where(eq(organizers.id, id));
+    return true;
   }
 
   // ========== TRACKS ==========

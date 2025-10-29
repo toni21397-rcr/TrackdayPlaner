@@ -58,6 +58,26 @@ export const ScheduleBlockType = {
   OTHER: "other",
 } as const;
 
+// ============= ORGANIZERS =============
+export interface Organizer {
+  id: string;
+  name: string;
+  website: string;
+  contactEmail: string;
+  contactPhone: string;
+  description: string;
+}
+
+export const insertOrganizerSchema = z.object({
+  name: z.string().min(1, "Organizer name is required"),
+  website: z.string().url().or(z.literal("")).default(""),
+  contactEmail: z.string().email().or(z.literal("")).default(""),
+  contactPhone: z.string().default(""),
+  description: z.string().default(""),
+});
+
+export type InsertOrganizer = z.infer<typeof insertOrganizerSchema>;
+
 // ============= TRACKS =============
 export interface Track {
   id: string;
@@ -65,6 +85,7 @@ export interface Track {
   country: string;
   lat: number;
   lng: number;
+  organizerId: string | null;
   organizerName: string;
   organizerWebsite: string;
 }
@@ -74,6 +95,7 @@ export const insertTrackSchema = z.object({
   country: z.string().min(1, "Country is required"),
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
+  organizerId: z.string().nullable().default(null),
   organizerName: z.string().default(""),
   organizerWebsite: z.string().url().or(z.literal("")).default(""),
 });
@@ -319,12 +341,22 @@ export interface DashboardStats {
 
 // ============= DRIZZLE TABLE DEFINITIONS =============
 
+export const organizers = pgTable("organizers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  website: text("website").notNull().default(""),
+  contactEmail: varchar("contact_email", { length: 255 }).notNull().default(""),
+  contactPhone: varchar("contact_phone", { length: 50 }).notNull().default(""),
+  description: text("description").notNull().default(""),
+});
+
 export const tracks = pgTable("tracks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name", { length: 255 }).notNull(),
   country: varchar("country", { length: 100 }).notNull(),
   lat: real("lat").notNull(),
   lng: real("lng").notNull(),
+  organizerId: varchar("organizer_id").references(() => organizers.id, { onDelete: "set null" }),
   organizerName: text("organizer_name").notNull().default(""),
   organizerWebsite: text("organizer_website").notNull().default(""),
 });
