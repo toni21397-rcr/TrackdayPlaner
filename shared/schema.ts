@@ -90,6 +90,7 @@ export interface Trackday {
   routeDuration?: number; // minutes
   routeFuelCost?: number; // cents
   routeTollsCost?: number; // cents
+  routeGeometry?: string; // JSON array of [lng, lat] coordinates
 }
 
 export const insertTrackdaySchema = z.object({
@@ -315,6 +316,7 @@ export const trackdays = pgTable("trackdays", {
   routeDuration: real("route_duration"),
   routeFuelCost: integer("route_fuel_cost"),
   routeTollsCost: integer("route_tolls_cost"),
+  routeGeometry: text("route_geometry"),
 });
 
 export const costItems = pgTable("cost_items", {

@@ -158,6 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       routeDuration: routeData.duration,
       routeFuelCost: fuelCostCents,
       routeTollsCost: tollsCostCents,
+      routeGeometry: routeData.geometry,
     });
     
     // Create/update auto-generated travel cost items
@@ -529,12 +530,13 @@ async function calculateRoute(
   toLat: number,
   toLng: number,
   apiKey: string
-): Promise<{ distance: number; duration: number }> {
-  // If no API key, use mock data
+): Promise<{ distance: number; duration: number; geometry?: string }> {
+  // If no API key, use mock data with simple straight line geometry
   if (!apiKey) {
     const distance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
     const duration = Math.round(distance / 80); // Assume 80 km/h average
-    return { distance, duration };
+    const geometry = JSON.stringify([[fromLng, fromLat], [toLng, toLat]]);
+    return { distance, duration, geometry };
   }
   
   // Try to use OpenRouteService API
@@ -554,13 +556,15 @@ async function calculateRoute(
     const data = await response.json();
     const distance = Math.round(data.features[0].properties.segments[0].distance / 1000); // m to km
     const duration = Math.round(data.features[0].properties.segments[0].duration / 60); // s to min
+    const geometry = JSON.stringify(data.features[0].geometry.coordinates); // Array of [lng, lat] pairs
     
-    return { distance, duration };
+    return { distance, duration, geometry };
   } catch (error) {
     console.error('Route calculation failed, using fallback:', error);
     const distance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
     const duration = Math.round(distance / 80);
-    return { distance, duration };
+    const geometry = JSON.stringify([[fromLng, fromLat], [toLng, toLat]]);
+    return { distance, duration, geometry };
   }
 }
 
