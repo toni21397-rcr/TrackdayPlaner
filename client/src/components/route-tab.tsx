@@ -1,10 +1,11 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Clock, DollarSign } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Trackday } from "@shared/schema";
+import { MapView } from "@/components/map-view";
+import type { Trackday, Track } from "@shared/schema";
 
 interface RouteTabProps {
   trackday: Trackday & any;
@@ -12,6 +13,10 @@ interface RouteTabProps {
 
 export function RouteTab({ trackday }: RouteTabProps) {
   const { toast } = useToast();
+
+  const { data: tracks } = useQuery<Track[]>({
+    queryKey: ["/api/tracks"],
+  });
 
   const recalculateMutation = useMutation({
     mutationFn: async () => {
@@ -37,6 +42,12 @@ export function RouteTab({ trackday }: RouteTabProps) {
     return `${(cents / 100).toFixed(2)} CHF`;
   };
 
+  // Find the track for this trackday
+  const track = tracks?.find(t => t.id === trackday.trackId);
+
+  // Enrich trackday with track data for MapView
+  const enrichedTrackday = track ? { ...trackday, track } : null;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -52,12 +63,25 @@ export function RouteTab({ trackday }: RouteTabProps) {
           </Button>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <MapPin className="w-12 h-12 mx-auto text-muted-foreground" />
-              <p className="text-muted-foreground">Route map would appear here</p>
+          {trackday.routeGeometry && tracks && track ? (
+            <div className="rounded-lg overflow-hidden border" style={{ height: "400px" }}>
+              <MapView
+                tracks={[track]}
+                trackdays={enrichedTrackday ? [enrichedTrackday] : []}
+                center={[track.lat, track.lng]}
+                zoom={7}
+              />
             </div>
-          </div>
+          ) : (
+            <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <MapPin className="w-12 h-12 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  {trackday.routeGeometry ? "Loading map..." : "Click 'Recalculate' to generate route"}
+                </p>
+              </div>
+            </div>
+          )}
 
           {trackday.routeDistance ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
