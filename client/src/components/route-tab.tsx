@@ -1,21 +1,41 @@
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Clock, DollarSign } from "lucide-react";
+import { MapPin, Navigation, Clock, DollarSign, ExternalLink, Share2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { MapView } from "@/components/map-view";
+import { ShareRouteDialog } from "@/components/share-route-dialog";
 import type { Trackday, Track } from "@shared/schema";
 
 interface RouteTabProps {
   trackday: Trackday & any;
 }
 
+interface Settings {
+  id: string;
+  currency: string;
+  homeLat: number | null;
+  homeLng: number | null;
+  fuelPrice95Cents: number;
+  fuelPrice98Cents: number;
+  dieselPriceCents: number;
+  openrouteServiceKey: string;
+  openWeatherApiKey: string;
+  annualBudgetCents: number;
+}
+
 export function RouteTab({ trackday }: RouteTabProps) {
   const { toast } = useToast();
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const { data: tracks } = useQuery<Track[]>({
     queryKey: ["/api/tracks"],
+  });
+
+  const { data: settings } = useQuery<Settings>({
+    queryKey: ["/api/settings"],
   });
 
   const recalculateMutation = useMutation({
@@ -48,19 +68,58 @@ export function RouteTab({ trackday }: RouteTabProps) {
   // Enrich trackday with track data for MapView
   const enrichedTrackday = track ? { ...trackday, track } : null;
 
+  // Generate Google Maps navigation URL
+  const getGoogleMapsUrl = () => {
+    if (!track || !settings?.homeLat || !settings?.homeLng) return null;
+    
+    const origin = `${settings.homeLat},${settings.homeLng}`;
+    const destination = `${track.lat},${track.lng}`;
+    
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+  };
+
+  const googleMapsUrl = getGoogleMapsUrl();
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 flex-wrap">
           <CardTitle>Route & Travel Costs</CardTitle>
-          <Button
-            onClick={() => recalculateMutation.mutate()}
-            disabled={recalculateMutation.isPending}
-            size="sm"
-            data-testid="button-recalculate"
-          >
-            {recalculateMutation.isPending ? "Calculating..." : "Recalculate"}
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            {googleMapsUrl && (
+              <>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setShareDialogOpen(true)}
+                  data-testid="button-share-route"
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share to Phone
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  data-testid="button-open-google-maps"
+                >
+                  <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Open in Google Maps
+                    <ExternalLink className="w-3 h-3 ml-2" />
+                  </a>
+                </Button>
+              </>
+            )}
+            <Button
+              onClick={() => recalculateMutation.mutate()}
+              disabled={recalculateMutation.isPending}
+              size="sm"
+              data-testid="button-recalculate"
+            >
+              {recalculateMutation.isPending ? "Calculating..." : "Recalculate"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {trackday.routeGeometry && tracks && track ? (
@@ -129,6 +188,16 @@ export function RouteTab({ trackday }: RouteTabProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Share Dialog */}
+      {googleMapsUrl && track && (
+        <ShareRouteDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          googleMapsUrl={googleMapsUrl}
+          trackName={track.name}
+        />
+      )}
     </div>
   );
 }

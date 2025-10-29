@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Filter, Search } from "lucide-react";
+import { Plus, Filter, Search, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,18 @@ import type { Trackday, Track, Vehicle } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 
+interface Settings {
+  id: string;
+  currency: string;
+  homeLat: number | null;
+  homeLng: number | null;
+  fuelPricePerLitre: number;
+  tollsPerKm: number;
+  annualBudgetCents: number;
+  openRouteServiceKey: string;
+  openWeatherApiKey: string;
+}
+
 export default function Trackdays() {
   const [search, setSearch] = useState("");
   const [year, setYear] = useState<string>("all");
@@ -37,6 +49,19 @@ export default function Trackdays() {
       return response.json();
     },
   });
+
+  const { data: settings } = useQuery<Settings>({
+    queryKey: ["/api/settings"],
+  });
+
+  const getGoogleMapsUrl = (track: Track) => {
+    if (!settings?.homeLat || !settings?.homeLng) return null;
+    
+    const origin = `${settings.homeLat},${settings.homeLng}`;
+    const destination = `${track.lat},${track.lng}`;
+    
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+  };
 
   const filteredTrackdays = trackdays?.filter((td) => {
     if (search && !td.track.name.toLowerCase().includes(search.toLowerCase())) {
@@ -119,48 +144,65 @@ export default function Trackdays() {
           </div>
         ) : filteredTrackdays && filteredTrackdays.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTrackdays.map((trackday) => (
-              <Link key={trackday.id} href={`/trackdays/${trackday.id}`} data-testid={`link-trackday-card-${trackday.id}`}>
-                <Card className="h-full hover-elevate active-elevate-2 cursor-pointer">
-                  <CardContent className="p-6 space-y-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-center justify-center bg-primary/10 text-primary rounded-md p-2 min-w-[3rem]">
-                          <div className="text-sm font-mono font-semibold">
-                            {format(new Date(trackday.date), "MMM")}
+            {filteredTrackdays.map((trackday) => {
+              const googleMapsUrl = getGoogleMapsUrl(trackday.track);
+              
+              return (
+                <Link key={trackday.id} href={`/trackdays/${trackday.id}`} data-testid={`link-trackday-card-${trackday.id}`}>
+                  <Card className="h-full hover-elevate active-elevate-2 cursor-pointer">
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex flex-col items-center justify-center bg-primary/10 text-primary rounded-md p-2 min-w-[3rem]">
+                            <div className="text-sm font-mono font-semibold">
+                              {format(new Date(trackday.date), "MMM")}
+                            </div>
+                            <div className="text-2xl font-mono font-bold">
+                              {format(new Date(trackday.date), "dd")}
+                            </div>
                           </div>
-                          <div className="text-2xl font-mono font-bold">
-                            {format(new Date(trackday.date), "dd")}
+                          <div>
+                            <h3 className="font-semibold text-lg">{trackday.track.name}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {trackday.track.country}
+                            </p>
                           </div>
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-lg">{trackday.track.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {trackday.track.country}
-                          </p>
+                        {googleMapsUrl && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                            data-testid={`button-navigate-${trackday.id}`}
+                          >
+                            <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" title="Navigate in Google Maps">
+                              <Navigation className="w-4 h-4" />
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge
+                          status={trackday.participationStatus}
+                          type="participation"
+                        />
+                      </div>
+                      {trackday.vehicle && (
+                        <div className="text-sm text-muted-foreground">
+                          {trackday.vehicle.name}
                         </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <StatusBadge
-                        status={trackday.participationStatus}
-                        type="participation"
-                      />
-                    </div>
-                    {trackday.vehicle && (
-                      <div className="text-sm text-muted-foreground">
-                        {trackday.vehicle.name}
-                      </div>
-                    )}
-                    {trackday.routeDistance && (
-                      <div className="text-sm font-mono text-muted-foreground">
-                        {trackday.routeDistance.toFixed(0)} km
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                      )}
+                      {trackday.routeDistance && (
+                        <div className="text-sm font-mono text-muted-foreground">
+                          {trackday.routeDistance.toFixed(0)} km
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <EmptyState
