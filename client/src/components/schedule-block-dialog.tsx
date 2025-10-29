@@ -74,10 +74,13 @@ export function ScheduleBlockDialog({ open, onOpenChange, trackdayId }: Schedule
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="schedule-block-dialog-description">
         <DialogHeader>
           <DialogTitle>Add Schedule Block</DialogTitle>
         </DialogHeader>
+        <p id="schedule-block-dialog-description" className="sr-only">
+          Add a schedule block to plan your trackday timeline
+        </p>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
             <FormField

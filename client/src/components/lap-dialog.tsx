@@ -66,16 +66,23 @@ export function LapDialog({ open, onOpenChange, sessionId }: LapDialogProps) {
   });
 
   const parseLapTime = (timeStr: string): number => {
+    if (!timeStr || timeStr.trim() === "") return 0;
+    
     const parts = timeStr.split(':');
     if (parts.length === 2) {
-      const [minutes, seconds] = parts;
-      return (parseInt(minutes) * 60 + parseFloat(seconds)) * 1000;
+      const minutes = parseInt(parts[0]) || 0;
+      const seconds = parseFloat(parts[1]) || 0;
+      if (isNaN(minutes) || isNaN(seconds)) return 0;
+      return (minutes * 60 + seconds) * 1000;
     }
-    return parseFloat(timeStr) * 1000;
+    
+    const parsed = parseFloat(timeStr);
+    if (isNaN(parsed)) return 0;
+    return parsed * 1000;
   };
 
   const formatLapTimeForInput = (ms: number): string => {
-    if (ms === 0) return "";
+    if (ms === 0 || isNaN(ms)) return "";
     const totalSeconds = ms / 1000;
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = (totalSeconds % 60).toFixed(3);
@@ -84,10 +91,13 @@ export function LapDialog({ open, onOpenChange, sessionId }: LapDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="lap-dialog-description">
         <DialogHeader>
           <DialogTitle>Add Lap Time</DialogTitle>
         </DialogHeader>
+        <p id="lap-dialog-description" className="sr-only">
+          Add a new lap time to this session
+        </p>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -121,6 +131,15 @@ export function LapDialog({ open, onOpenChange, sessionId }: LapDialogProps) {
                         placeholder="1:23.456"
                         value={formatLapTimeForInput(field.value)}
                         onChange={(e) => {
+                          const inputValue = e.target.value;
+                          // Allow partial input while typing
+                          if (inputValue === "" || inputValue.match(/^[\d:.]*$/)) {
+                            const ms = parseLapTime(inputValue);
+                            field.onChange(ms);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Validate on blur to ensure we have a complete time
                           const ms = parseLapTime(e.target.value);
                           field.onChange(ms);
                         }}

@@ -67,10 +67,13 @@ export function SessionDialog({ open, onOpenChange, trackdayId }: SessionDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="session-dialog-description">
         <DialogHeader>
           <DialogTitle>Add Session</DialogTitle>
         </DialogHeader>
+        <p id="session-dialog-description" className="sr-only">
+          Add a new track session for recording lap times
+        </p>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
             <FormField

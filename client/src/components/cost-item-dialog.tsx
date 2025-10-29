@@ -82,10 +82,13 @@ export function CostItemDialog({ open, onOpenChange, trackdayId, costItem }: Cos
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="cost-item-dialog-description">
         <DialogHeader>
           <DialogTitle>{costItem ? "Edit Cost" : "Add Cost"}</DialogTitle>
         </DialogHeader>
+        <p id="cost-item-dialog-description" className="sr-only">
+          {costItem ? "Edit cost item details" : "Add a new cost item for this trackday"}
+        </p>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

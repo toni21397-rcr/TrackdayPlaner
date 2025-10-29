@@ -17,6 +17,11 @@ export function TimelineTab({ trackdayId }: TimelineTabProps) {
 
   const { data: blocks } = useQuery<TrackdayScheduleBlock[]>({
     queryKey: ["/api/schedule-blocks", trackdayId],
+    queryFn: async () => {
+      const response = await fetch(`/api/schedule-blocks?trackdayId=${trackdayId}`);
+      if (!response.ok) throw new Error("Failed to fetch schedule blocks");
+      return response.json();
+    },
   });
 
   const getBlockColor = (type: string) => {

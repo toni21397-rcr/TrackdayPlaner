@@ -34,6 +34,11 @@ export function LapsTab({ trackdayId }: LapsTabProps) {
 
   const { data: sessions } = useQuery<Array<TrackSession & { laps?: Lap[] }>>({
     queryKey: ["/api/sessions", trackdayId],
+    queryFn: async () => {
+      const response = await fetch(`/api/sessions?trackdayId=${trackdayId}`);
+      if (!response.ok) throw new Error("Failed to fetch sessions");
+      return response.json();
+    },
   });
 
   const selectedSession = sessions?.find(s => s.id === selectedSessionId);

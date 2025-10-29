@@ -28,6 +28,11 @@ export function CostItemsTab({ trackdayId }: CostItemsTabProps) {
 
   const { data: costItems } = useQuery<CostItem[]>({
     queryKey: ["/api/cost-items", trackdayId],
+    queryFn: async () => {
+      const response = await fetch(`/api/cost-items?trackdayId=${trackdayId}`);
+      if (!response.ok) throw new Error("Failed to fetch cost items");
+      return response.json();
+    },
   });
 
   const formatCurrency = (cents: number) => {
