@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, MapPin, Calendar } from "lucide-react";
+import { ExternalLink, MapPin, Calendar, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
 import type { Track } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 
 export default function Booking() {
   const { data: tracks, isLoading } = useQuery<Track[]>({
@@ -75,21 +75,16 @@ export default function Booking() {
                   </div>
 
                   {track.organizerWebsite && (
-                    <Button
-                      variant="default"
-                      className="w-full"
-                      asChild
-                      data-testid={`button-book-website-${track.id}`}
-                    >
-                      <a
-                        href={track.organizerWebsite}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <Link href={`/booking/${track.id}`}>
+                      <Button
+                        variant="default"
+                        className="w-full"
+                        data-testid={`button-book-detail-${track.id}`}
                       >
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Visit Organizer Website
-                      </a>
-                    </Button>
+                        <ArrowRight className="w-4 h-4 mr-2" />
+                        Book & Create Trackday
+                      </Button>
+                    </Link>
                   )}
                 </CardContent>
               </Card>
@@ -116,8 +111,9 @@ export default function Booking() {
                 <div className="space-y-1">
                   <h3 className="font-semibold">How Booking Works</h3>
                   <p className="text-sm text-muted-foreground">
-                    Click "Visit Organizer Website" to open the track organizer's booking page in a new tab. 
-                    You can view available dates, pricing, and complete your booking directly with the organizer.
+                    Click "Book & Create Trackday" to browse the organizer's website within the app. 
+                    As you find a trackday you want to book, you can quickly transfer the booking details 
+                    (date, price, notes) into your trackday planner with the quick-create form.
                   </p>
                 </div>
               </div>

@@ -112,6 +112,7 @@ export class MemStorage implements IStorage {
       annualBudgetCents: 500000, // CHF 5000
       openRouteServiceKey: "",
       openWeatherApiKey: "",
+      googleMapsApiKey: "",
     };
 
     // Seed initial data
@@ -121,9 +122,9 @@ export class MemStorage implements IStorage {
   private seedData() {
     // Seed 3 tracks
     const tracks = [
-      { name: "Spa-Francorchamps", country: "Belgium", lat: 50.4372, lng: 5.9714 },
-      { name: "Nürburgring", country: "Germany", lat: 50.3356, lng: 6.9475 },
-      { name: "Hockenheimring", country: "Germany", lat: 49.3278, lng: 8.5658 },
+      { name: "Spa-Francorchamps", country: "Belgium", lat: 50.4372, lng: 5.9714, organizerName: "", organizerWebsite: "" },
+      { name: "Nürburgring", country: "Germany", lat: 50.3356, lng: 6.9475, organizerName: "", organizerWebsite: "" },
+      { name: "Hockenheimring", country: "Germany", lat: 49.3278, lng: 8.5658, organizerName: "", organizerWebsite: "" },
     ];
     tracks.forEach(t => {
       const id = randomUUID();

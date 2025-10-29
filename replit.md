@@ -143,10 +143,17 @@ Preferred communication style: Simple, everyday language.
 **Trackday Booking:**
 - Dedicated Booking page (`/booking`) accessible via sidebar navigation
 - Lists all tracks with organizer websites for easy booking access
-- Track cards display organizer name, location, coordinates, and direct links to booking websites
-- All organizer websites open in new tabs with proper security (rel="noopener noreferrer")
+- Track cards display organizer name, location, coordinates, and "Book & Create Trackday" buttons
+- Booking detail page (`/booking/:trackId`) with embedded organizer website view:
+  - Split-screen layout: iframe on left showing organizer website, quick-create form on right
+  - Graceful fallback for websites that block iframe embedding (X-Frame-Options)
+  - Quick-create form allows instant trackday creation with booking details:
+    - Auto-populates track information
+    - Manual entry for date, duration, vehicle, price, and notes
+    - Creates trackday with associated cost item for entry fee
+    - Redirects to trackday detail page after creation
+- Enables seamless workflow: browse organizer site → transfer details → create trackday
 - Empty state guides users to add organizer information to tracks
-- "How Booking Works" info card explains the booking process
 
 **Weather Forecasting:**
 - OpenWeather API (configurable via OPEN_WEATHER_API_KEY in settings)
