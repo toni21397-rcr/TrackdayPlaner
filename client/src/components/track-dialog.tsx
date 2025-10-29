@@ -38,6 +38,8 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
       country: "",
       lat: 0,
       lng: 0,
+      organizerName: "",
+      organizerWebsite: "",
     },
   });
 
@@ -50,6 +52,8 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
           country: track.country,
           lat: track.lat,
           lng: track.lng,
+          organizerName: track.organizerName || "",
+          organizerWebsite: track.organizerWebsite || "",
         });
       } else {
         form.reset({
@@ -57,6 +61,8 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
           country: "",
           lat: 0,
           lng: 0,
+          organizerName: "",
+          organizerWebsite: "",
         });
       }
     }
@@ -164,6 +170,34 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="organizerName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Organizer Name (Optional)</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="e.g. Circuit de Spa-Francorchamps" data-testid="input-organizer-name" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="organizerWebsite"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Organizer Website (Optional)</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="url" placeholder="https://www.spa-francorchamps.be" data-testid="input-organizer-website" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex justify-end gap-3 pt-4">
               <Button

@@ -288,6 +288,28 @@ export default function SettingsPage() {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="googleMapsApiKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Google Maps API Key</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="password"
+                            placeholder="Leave empty to use OpenRouteService"
+                            data-testid="input-google-maps-key"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Optional: API key for Google Maps route calculations (matches navigation exactly)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
 
