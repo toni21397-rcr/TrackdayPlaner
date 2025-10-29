@@ -82,24 +82,31 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
       }
       return apiRequest("POST", "/api/trackdays", data);
     },
-    onSuccess: async (createdTrackday: any) => {
+    onSuccess: async (savedTrackday: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/trackdays"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trackdays/upcoming"] });
       queryClient.invalidateQueries({ queryKey: ["/api/summary"] });
       
-      toast({
-        title: trackday ? "Trackday updated" : "Trackday created",
-        description: "Calculating route and fetching weather...",
-      });
+      // Get the trackday ID (either new or existing)
+      const trackdayId = savedTrackday?.id || trackday?.id;
       
-      // Auto-calculate route and weather for new trackdays
-      if (!trackday && createdTrackday?.id) {
+      // Check if track or vehicle changed (for updates)
+      const trackChanged = trackday && trackday.trackId !== savedTrackday?.trackId;
+      const vehicleChanged = trackday && trackday.vehicleId !== savedTrackday?.vehicleId;
+      const shouldRecalculate = !trackday || trackChanged || vehicleChanged;
+      
+      if (shouldRecalculate && trackdayId) {
+        toast({
+          title: trackday ? "Trackday updated" : "Trackday created",
+          description: "Calculating route and fetching weather...",
+        });
+        
         try {
           // Calculate route automatically
-          await apiRequest("POST", `/api/trackdays/${createdTrackday.id}/calculate-route`, {});
+          await apiRequest("POST", `/api/trackdays/${trackdayId}/calculate-route`, {});
           
           // Fetch weather automatically
-          await apiRequest("POST", `/api/weather/${createdTrackday.id}/refresh`, {});
+          await apiRequest("POST", `/api/weather/${trackdayId}/refresh`, {});
           
           queryClient.invalidateQueries({ queryKey: ["/api/trackdays"] });
           
@@ -109,7 +116,17 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
           });
         } catch (error) {
           console.error("Auto-calculation error:", error);
+          toast({
+            title: "Warning",
+            description: "Trackday saved, but automatic calculation failed. You can manually recalculate from the Route tab.",
+            variant: "default",
+          });
         }
+      } else {
+        toast({
+          title: "Trackday updated",
+          description: "Your changes have been saved.",
+        });
       }
       
       onOpenChange(false);
