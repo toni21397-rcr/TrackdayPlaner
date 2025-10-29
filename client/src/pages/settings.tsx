@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -61,9 +62,11 @@ export default function SettingsPage() {
   });
 
   // Update form when settings load
-  if (settings && !form.formState.isDirty) {
-    form.reset(settings);
-  }
+  useEffect(() => {
+    if (settings && !form.formState.isDirty) {
+      form.reset(settings);
+    }
+  }, [settings, form]);
 
   return (
     <div className="flex-1 overflow-auto">

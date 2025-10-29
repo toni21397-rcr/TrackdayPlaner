@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
+import { pgTable, varchar, text, integer, real, boolean, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Enums for type safety
 export const ParticipationStatus = {
@@ -82,7 +84,7 @@ export interface Trackday {
   durationDays: number;
   vehicleId: string | null;
   notes: string;
-  participationStatus: keyof typeof ParticipationStatus;
+  participationStatus: typeof ParticipationStatus[keyof typeof ParticipationStatus];
   // Computed/cached fields for route
   routeDistance?: number; // km
   routeDuration?: number; // minutes
@@ -105,10 +107,10 @@ export type InsertTrackday = z.infer<typeof insertTrackdaySchema>;
 export interface CostItem {
   id: string;
   trackdayId: string;
-  type: keyof typeof CostType;
+  type: typeof CostType[keyof typeof CostType];
   amountCents: number;
   currency: string;
-  status: keyof typeof PaymentStatus;
+  status: typeof PaymentStatus[keyof typeof PaymentStatus];
   dueDate: string | null; // ISO date string
   paidAt: string | null; // ISO date string
   notes: string;
@@ -133,8 +135,8 @@ export type InsertCostItem = z.infer<typeof insertCostItemSchema>;
 export interface Vehicle {
   id: string;
   name: string;
-  type: keyof typeof VehicleType;
-  fuelType: keyof typeof FuelType;
+  type: typeof VehicleType[keyof typeof VehicleType];
+  fuelType: typeof FuelType[keyof typeof FuelType];
   consumptionPer100: number; // liters per 100km
   notes: string;
 }
@@ -154,7 +156,7 @@ export interface MaintenanceLog {
   id: string;
   vehicleId: string;
   date: string; // ISO date string
-  type: keyof typeof MaintenanceType;
+  type: typeof MaintenanceType[keyof typeof MaintenanceType];
   costCents: number;
   odometerKm: number | null;
   notes: string;
@@ -178,7 +180,7 @@ export interface TrackdayScheduleBlock {
   startTime: string; // ISO datetime or time string
   endTime: string;
   title: string;
-  type: keyof typeof ScheduleBlockType;
+  type: typeof ScheduleBlockType[keyof typeof ScheduleBlockType];
   notes: string;
 }
 
@@ -290,3 +292,109 @@ export interface DashboardStats {
   maintenanceCostCents: number;
   upcomingEvents: number;
 }
+
+// ============= DRIZZLE TABLE DEFINITIONS =============
+
+export const tracks = pgTable("tracks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  country: varchar("country", { length: 100 }).notNull(),
+  lat: real("lat").notNull(),
+  lng: real("lng").notNull(),
+});
+
+export const trackdays = pgTable("trackdays", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trackId: varchar("track_id").notNull().references(() => tracks.id, { onDelete: "cascade" }),
+  date: varchar("date", { length: 20 }).notNull(),
+  durationDays: integer("duration_days").notNull().default(1),
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
+  notes: text("notes").notNull().default(""),
+  participationStatus: varchar("participation_status", { length: 20 }).notNull().default("planned"),
+  routeDistance: real("route_distance"),
+  routeDuration: real("route_duration"),
+  routeFuelCost: integer("route_fuel_cost"),
+  routeTollsCost: integer("route_tolls_cost"),
+});
+
+export const costItems = pgTable("cost_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trackdayId: varchar("trackday_id").notNull().references(() => trackdays.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 20 }).notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: varchar("currency", { length: 10 }).notNull().default("CHF"),
+  status: varchar("status", { length: 20 }).notNull().default("planned"),
+  dueDate: varchar("due_date", { length: 20 }),
+  paidAt: varchar("paid_at", { length: 20 }),
+  notes: text("notes").notNull().default(""),
+  isTravelAuto: boolean("is_travel_auto").notNull().default(false),
+});
+
+export const vehicles = pgTable("vehicles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 20 }).notNull(),
+  fuelType: varchar("fuel_type", { length: 20 }).notNull(),
+  consumptionPer100: real("consumption_per_100").notNull(),
+  notes: text("notes").notNull().default(""),
+});
+
+export const maintenanceLogs = pgTable("maintenance_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+  date: varchar("date", { length: 20 }).notNull(),
+  type: varchar("type", { length: 20 }).notNull(),
+  costCents: integer("cost_cents").notNull(),
+  odometerKm: integer("odometer_km"),
+  notes: text("notes").notNull().default(""),
+});
+
+export const scheduleBlocks = pgTable("schedule_blocks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trackdayId: varchar("trackday_id").notNull().references(() => trackdays.id, { onDelete: "cascade" }),
+  startTime: varchar("start_time", { length: 50 }).notNull(),
+  endTime: varchar("end_time", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  type: varchar("type", { length: 20 }).notNull(),
+  notes: text("notes").notNull().default(""),
+});
+
+export const trackSessions = pgTable("track_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trackdayId: varchar("trackday_id").notNull().references(() => trackdays.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  startTime: varchar("start_time", { length: 50 }),
+  endTime: varchar("end_time", { length: 50 }),
+  bestLapMs: integer("best_lap_ms"),
+  notes: text("notes").notNull().default(""),
+});
+
+export const laps = pgTable("laps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => trackSessions.id, { onDelete: "cascade" }),
+  lapNumber: integer("lap_number").notNull(),
+  lapTimeMs: integer("lap_time_ms").notNull(),
+  sectorTimesMsJson: text("sector_times_ms_json"),
+  valid: boolean("valid").notNull().default(true),
+});
+
+export const settings = pgTable("settings", {
+  id: varchar("id").primaryKey().default("default"),
+  currency: varchar("currency", { length: 10 }).notNull().default("CHF"),
+  homeLat: real("home_lat").notNull().default(47.3769),
+  homeLng: real("home_lng").notNull().default(8.5417),
+  fuelPricePerLitre: real("fuel_price_per_litre").notNull().default(1.90),
+  tollsPerKm: real("tolls_per_km").notNull().default(0.05),
+  annualBudgetCents: integer("annual_budget_cents").notNull().default(500000),
+  openRouteServiceKey: text("open_route_service_key").notNull().default(""),
+  openWeatherApiKey: text("open_weather_api_key").notNull().default(""),
+});
+
+export const weatherCache = pgTable("weather_cache", {
+  trackdayId: varchar("trackday_id").primaryKey().references(() => trackdays.id, { onDelete: "cascade" }),
+  fetchedAt: varchar("fetched_at", { length: 50 }).notNull(),
+  temperature: real("temperature").notNull(),
+  rainChance: integer("rain_chance").notNull(),
+  windSpeed: real("wind_speed").notNull(),
+  description: varchar("description", { length: 255 }).notNull(),
+});

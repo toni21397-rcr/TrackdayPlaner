@@ -1,4 +1,7 @@
 import { randomUUID } from "crypto";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import { eq, and, sql as drizzleSql } from "drizzle-orm";
 import type {
   Track, InsertTrack,
   Trackday, InsertTrackday,
@@ -10,6 +13,18 @@ import type {
   Lap, InsertLap,
   Settings, InsertSettings,
   WeatherCache,
+} from "@shared/schema";
+import {
+  tracks,
+  trackdays,
+  costItems,
+  vehicles,
+  maintenanceLogs,
+  scheduleBlocks,
+  trackSessions,
+  laps,
+  settings as settingsTable,
+  weatherCache as weatherCacheTable,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -396,4 +411,363 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// PostgreSQL Storage Implementation using Drizzle ORM
+export class DbStorage implements IStorage {
+  private db;
+  private initPromise: Promise<void>;
+
+  constructor() {
+    const sql = neon(process.env.DATABASE_URL!);
+    this.db = drizzle(sql);
+    this.initPromise = this.initializeDatabase();
+  }
+
+  private async initializeDatabase(): Promise<void> {
+    try {
+      // Ensure default settings exist
+      const existingSettings = await this.db.select().from(settingsTable).where(eq(settingsTable.id, "default"));
+      if (existingSettings.length === 0) {
+        await this.db.insert(settingsTable).values({
+          id: "default",
+          currency: "CHF",
+          homeLat: 47.3769,
+          homeLng: 8.5417,
+          fuelPricePerLitre: 1.90,
+          tollsPerKm: 0.05,
+          annualBudgetCents: 500000,
+          openRouteServiceKey: "",
+          openWeatherApiKey: "",
+        });
+      }
+
+      // Seed initial data if database is empty
+      const existingTracks = await this.db.select().from(tracks);
+      if (existingTracks.length === 0) {
+        await this.seedData();
+      }
+    } catch (error) {
+      console.error("Failed to initialize database:", error);
+      throw error;
+    }
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    await this.initPromise;
+  }
+
+  private async seedData() {
+    // Seed 3 tracks
+    const trackData = [
+      { name: "Spa-Francorchamps", country: "Belgium", lat: 50.4372, lng: 5.9714 },
+      { name: "Nürburgring", country: "Germany", lat: 50.3356, lng: 6.9475 },
+      { name: "Hockenheimring", country: "Germany", lat: 49.3278, lng: 8.5658 },
+    ];
+    const createdTracks = await this.db.insert(tracks).values(trackData).returning();
+
+    // Seed 1 vehicle
+    const vehicleData = {
+      name: "Yamaha R1",
+      type: "motorcycle",
+      fuelType: "gasoline",
+      consumptionPer100: 6.5,
+      notes: "Track bike with racing setup",
+    };
+    const createdVehicles = await this.db.insert(vehicles).values(vehicleData).returning();
+
+    // Seed 2 trackdays
+    const trackdayData = [
+      {
+        trackId: createdTracks[0].id,
+        date: "2025-05-15",
+        durationDays: 2,
+        vehicleId: createdVehicles[0].id,
+        notes: "Two-day advanced session",
+        participationStatus: "registered",
+      },
+      {
+        trackId: createdTracks[1].id,
+        date: "2025-06-20",
+        durationDays: 1,
+        vehicleId: createdVehicles[0].id,
+        notes: "Single day track session",
+        participationStatus: "planned",
+      },
+    ];
+    const createdTrackdays = await this.db.insert(trackdays).values(trackdayData).returning();
+
+    // Seed cost item for first trackday
+    await this.db.insert(costItems).values({
+      trackdayId: createdTrackdays[0].id,
+      type: "entry",
+      amountCents: 45000,
+      currency: "CHF",
+      status: "paid",
+      paidAt: "2025-04-01",
+      notes: "Early bird registration",
+      isTravelAuto: false,
+    });
+  }
+
+  // ========== TRACKS ==========
+  async getTracks(): Promise<Track[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(tracks);
+  }
+
+  async getTrack(id: string): Promise<Track | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(tracks).where(eq(tracks.id, id));
+    return result[0];
+  }
+
+  async createTrack(data: InsertTrack): Promise<Track> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(tracks).values(data).returning();
+    return result[0];
+  }
+
+  async updateTrack(id: string, data: InsertTrack): Promise<Track | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.update(tracks).set(data).where(eq(tracks.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteTrack(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    await this.db.delete(tracks).where(eq(tracks.id, id));
+    return true;
+  }
+
+  // ========== TRACKDAYS ==========
+  async getTrackdays(filters?: { year?: string; participationStatus?: string }): Promise<Trackday[]> {
+    await this.ensureInitialized();
+    let query = this.db.select().from(trackdays);
+    
+    const conditions = [];
+    if (filters?.year && filters.year !== "all") {
+      conditions.push(drizzleSql`${trackdays.date} LIKE ${filters.year + '%'}`);
+    }
+    if (filters?.participationStatus && filters.participationStatus !== "all") {
+      conditions.push(eq(trackdays.participationStatus, filters.participationStatus));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    const result = await query;
+    return result.sort((a, b) => b.date.localeCompare(a.date)) as Trackday[];
+  }
+
+  async getTrackday(id: string): Promise<Trackday | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(trackdays).where(eq(trackdays.id, id));
+    return result[0] as Trackday | undefined;
+  }
+
+  async getUpcomingTrackdays(limit: number = 5): Promise<Trackday[]> {
+    await this.ensureInitialized();
+    const today = new Date().toISOString().split('T')[0];
+    const result = await this.db
+      .select()
+      .from(trackdays)
+      .where(
+        and(
+          drizzleSql`${trackdays.date} >= ${today}`,
+          drizzleSql`${trackdays.participationStatus} != 'cancelled'`
+        )
+      )
+      .limit(limit);
+    return result.sort((a, b) => a.date.localeCompare(b.date)) as Trackday[];
+  }
+
+  async createTrackday(data: InsertTrackday): Promise<Trackday> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(trackdays).values(data).returning();
+    return result[0] as Trackday;
+  }
+
+  async updateTrackday(id: string, data: Partial<Trackday>): Promise<Trackday | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.update(trackdays).set(data).where(eq(trackdays.id, id)).returning();
+    return result[0] as Trackday | undefined;
+  }
+
+  async deleteTrackday(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    // Cascading deletes handled by database foreign key constraints
+    await this.db.delete(trackdays).where(eq(trackdays.id, id));
+    return true;
+  }
+
+  // ========== COST ITEMS ==========
+  async getCostItems(trackdayId?: string): Promise<CostItem[]> {
+    await this.ensureInitialized();
+    if (trackdayId) {
+      return await this.db.select().from(costItems).where(eq(costItems.trackdayId, trackdayId)) as CostItem[];
+    }
+    return await this.db.select().from(costItems) as CostItem[];
+  }
+
+  async getCostItem(id: string): Promise<CostItem | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(costItems).where(eq(costItems.id, id));
+    return result[0] as CostItem | undefined;
+  }
+
+  async createCostItem(data: InsertCostItem): Promise<CostItem> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(costItems).values(data).returning();
+    return result[0] as CostItem;
+  }
+
+  async updateCostItem(id: string, data: Partial<InsertCostItem>): Promise<CostItem | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.update(costItems).set(data).where(eq(costItems.id, id)).returning();
+    return result[0] as CostItem | undefined;
+  }
+
+  async deleteCostItem(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    await this.db.delete(costItems).where(eq(costItems.id, id));
+    return true;
+  }
+
+  // ========== VEHICLES ==========
+  async getVehicles(): Promise<Vehicle[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(vehicles) as Vehicle[];
+  }
+
+  async getVehicle(id: string): Promise<Vehicle | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(vehicles).where(eq(vehicles.id, id));
+    return result[0] as Vehicle | undefined;
+  }
+
+  async createVehicle(data: InsertVehicle): Promise<Vehicle> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(vehicles).values(data).returning();
+    return result[0] as Vehicle;
+  }
+
+  async updateVehicle(id: string, data: InsertVehicle): Promise<Vehicle | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.update(vehicles).set(data).where(eq(vehicles.id, id)).returning();
+    return result[0] as Vehicle | undefined;
+  }
+
+  async deleteVehicle(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    await this.db.delete(vehicles).where(eq(vehicles.id, id));
+    return true;
+  }
+
+  // ========== MAINTENANCE LOGS ==========
+  async getMaintenanceLogs(vehicleId?: string): Promise<MaintenanceLog[]> {
+    await this.ensureInitialized();
+    if (vehicleId) {
+      const result = await this.db.select().from(maintenanceLogs).where(eq(maintenanceLogs.vehicleId, vehicleId));
+      return result.sort((a, b) => b.date.localeCompare(a.date)) as MaintenanceLog[];
+    }
+    const result = await this.db.select().from(maintenanceLogs);
+    return result.sort((a, b) => b.date.localeCompare(a.date)) as MaintenanceLog[];
+  }
+
+  async createMaintenanceLog(data: InsertMaintenanceLog): Promise<MaintenanceLog> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(maintenanceLogs).values(data).returning();
+    return result[0] as MaintenanceLog;
+  }
+
+  // ========== SCHEDULE BLOCKS ==========
+  async getScheduleBlocks(trackdayId: string): Promise<TrackdayScheduleBlock[]> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(scheduleBlocks).where(eq(scheduleBlocks.trackdayId, trackdayId));
+    return result.sort((a, b) => a.startTime.localeCompare(b.startTime)) as TrackdayScheduleBlock[];
+  }
+
+  async createScheduleBlock(data: InsertScheduleBlock): Promise<TrackdayScheduleBlock> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(scheduleBlocks).values(data).returning();
+    return result[0] as TrackdayScheduleBlock;
+  }
+
+  // ========== TRACK SESSIONS ==========
+  async getTrackSessions(trackdayId: string): Promise<TrackSession[]> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(trackSessions).where(eq(trackSessions.trackdayId, trackdayId));
+    return result.sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+  }
+
+  async createTrackSession(data: InsertTrackSession): Promise<TrackSession> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(trackSessions).values(data).returning();
+    return result[0];
+  }
+
+  // ========== LAPS ==========
+  async getLaps(sessionId: string): Promise<Lap[]> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(laps).where(eq(laps.sessionId, sessionId));
+    return result.sort((a, b) => a.lapNumber - b.lapNumber);
+  }
+
+  async createLap(data: InsertLap): Promise<Lap> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(laps).values(data).returning();
+    const lap = result[0];
+    
+    // Update session best lap if this is better
+    if (data.valid) {
+      const session = await this.db.select().from(trackSessions).where(eq(trackSessions.id, data.sessionId));
+      if (session[0]) {
+        if (!session[0].bestLapMs || data.lapTimeMs < session[0].bestLapMs) {
+          await this.db.update(trackSessions)
+            .set({ bestLapMs: data.lapTimeMs })
+            .where(eq(trackSessions.id, data.sessionId));
+        }
+      }
+    }
+    
+    return lap;
+  }
+
+  // ========== SETTINGS ==========
+  async getSettings(): Promise<Settings> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(settingsTable).where(eq(settingsTable.id, "default"));
+    return result[0];
+  }
+
+  async updateSettings(data: InsertSettings): Promise<Settings> {
+    await this.ensureInitialized();
+    const result = await this.db.update(settingsTable)
+      .set(data)
+      .where(eq(settingsTable.id, "default"))
+      .returning();
+    return result[0];
+  }
+
+  // ========== WEATHER CACHE ==========
+  async getWeatherCache(trackdayId: string): Promise<WeatherCache | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(weatherCacheTable).where(eq(weatherCacheTable.trackdayId, trackdayId));
+    return result[0];
+  }
+
+  async setWeatherCache(data: WeatherCache): Promise<WeatherCache> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .insert(weatherCacheTable)
+      .values(data)
+      .onConflictDoUpdate({
+        target: weatherCacheTable.trackdayId,
+        set: data,
+      })
+      .returning();
+    return result[0];
+  }
+}
+
+export const storage = new DbStorage();
