@@ -564,6 +564,9 @@ async function calculateRoute(
   googleMapsApiKey: string,
   openRouteServiceKey: string
 ): Promise<{ distance: number; duration: number; geometry?: string }> {
+  let googleMapsError: Error | null = null;
+  let openRouteServiceError: Error | null = null;
+  
   // Try Google Maps first if API key is available (this matches navigation exactly!)
   if (googleMapsApiKey) {
     try {
@@ -571,7 +574,9 @@ async function calculateRoute(
         `https://maps.googleapis.com/maps/api/directions/json?origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&key=${googleMapsApiKey}`
       );
       
-      if (!response.ok) throw new Error('Google Maps API request failed');
+      if (!response.ok) {
+        throw new Error(`Google Maps API returned status ${response.status}`);
+      }
       
       const data = await response.json();
       if (data.status === 'OK' && data.routes && data.routes.length > 0) {
@@ -587,9 +592,12 @@ async function calculateRoute(
         
         console.log('Route calculated using Google Maps API');
         return { distance, duration, geometry };
+      } else {
+        throw new Error(`Google Maps API returned status: ${data.status}`);
       }
     } catch (error) {
-      console.error('Google Maps route calculation failed, trying OpenRouteService:', error);
+      googleMapsError = error instanceof Error ? error : new Error(String(error));
+      console.error('Google Maps route calculation failed, will try OpenRouteService:', googleMapsError.message);
     }
   }
   
@@ -606,7 +614,9 @@ async function calculateRoute(
         }
       );
       
-      if (!response.ok) throw new Error('OpenRouteService API request failed');
+      if (!response.ok) {
+        throw new Error(`OpenRouteService API returned status ${response.status}`);
+      }
       
       const data = await response.json();
       const distance = Math.round(data.features[0].properties.segments[0].distance / 1000); // m to km
@@ -616,12 +626,17 @@ async function calculateRoute(
       console.log('Route calculated using OpenRouteService API');
       return { distance, duration, geometry };
     } catch (error) {
-      console.error('OpenRouteService route calculation failed, using fallback:', error);
+      openRouteServiceError = error instanceof Error ? error : new Error(String(error));
+      console.error('OpenRouteService route calculation failed, will use Haversine fallback:', openRouteServiceError.message);
     }
   }
   
-  // Fallback to mock data with simple straight line geometry
+  // Fallback to Haversine calculation with simple straight line geometry
   console.log('Using fallback Haversine distance calculation');
+  if (googleMapsError || openRouteServiceError) {
+    console.log('Both API methods failed, falling back to basic distance calculation');
+  }
+  
   const distance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
   const duration = Math.round(distance / 80); // Assume 80 km/h average
   const geometry = JSON.stringify([[fromLng, fromLat], [toLng, toLat]]);
