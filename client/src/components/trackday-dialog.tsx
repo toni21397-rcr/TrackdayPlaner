@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Check, ChevronsUpDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,10 +26,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { insertTrackdaySchema, type InsertTrackday, type Track, type Vehicle } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface TrackdayDialogProps {
   open: boolean;
@@ -37,6 +53,7 @@ interface TrackdayDialogProps {
 
 export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogProps) {
   const { toast } = useToast();
+  const [trackSearchOpen, setTrackSearchOpen] = useState(false);
 
   const { data: tracks } = useQuery<Track[]>({
     queryKey: ["/api/tracks"],
@@ -65,14 +82,36 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
       }
       return apiRequest("POST", "/api/trackdays", data);
     },
-    onSuccess: () => {
+    onSuccess: async (createdTrackday: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/trackdays"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trackdays/upcoming"] });
       queryClient.invalidateQueries({ queryKey: ["/api/summary"] });
+      
       toast({
         title: trackday ? "Trackday updated" : "Trackday created",
-        description: "Your trackday has been saved successfully.",
+        description: "Calculating route and fetching weather...",
       });
+      
+      // Auto-calculate route and weather for new trackdays
+      if (!trackday && createdTrackday?.id) {
+        try {
+          // Calculate route automatically
+          await apiRequest("POST", `/api/trackdays/${createdTrackday.id}/calculate-route`, {});
+          
+          // Fetch weather automatically
+          await apiRequest("POST", `/api/weather/${createdTrackday.id}/refresh`, {});
+          
+          queryClient.invalidateQueries({ queryKey: ["/api/trackdays"] });
+          
+          toast({
+            title: "Trackday ready!",
+            description: "Route and weather data have been loaded.",
+          });
+        } catch (error) {
+          console.error("Auto-calculation error:", error);
+        }
+      }
+      
       onOpenChange(false);
       form.reset();
     },
@@ -97,22 +136,61 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
               control={form.control}
               name="trackId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Track</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-track">
-                        <SelectValue placeholder="Select a track" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {tracks?.map((track) => (
-                        <SelectItem key={track.id} value={track.id}>
-                          {track.name} ({track.country})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={trackSearchOpen} onOpenChange={setTrackSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={trackSearchOpen}
+                          className={cn(
+                            "w-full justify-between",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          data-testid="select-track"
+                        >
+                          {field.value
+                            ? tracks?.find((track) => track.id === field.value)?.name
+                            : "Search for a track..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search tracks..." data-testid="input-track-search" />
+                        <CommandList>
+                          <CommandEmpty>No track found.</CommandEmpty>
+                          <CommandGroup>
+                            {tracks?.map((track) => (
+                              <CommandItem
+                                key={track.id}
+                                value={`${track.name} ${track.country}`}
+                                onSelect={() => {
+                                  form.setValue("trackId", track.id);
+                                  setTrackSearchOpen(false);
+                                }}
+                                data-testid={`track-option-${track.id}`}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    field.value === track.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{track.name}</span>
+                                  <span className="text-sm text-muted-foreground">{track.country}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
