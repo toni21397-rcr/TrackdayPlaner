@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -15,10 +15,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { insertTrackSchema, type InsertTrack } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { insertTrackSchema, type InsertTrack, type Organizer } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +33,10 @@ interface TrackDialogProps {
 export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
   const { toast } = useToast();
 
+  const { data: organizers } = useQuery<Organizer[]>({
+    queryKey: ["/api/organizers"],
+  });
+
   const form = useForm<InsertTrack>({
     resolver: zodResolver(insertTrackSchema),
     defaultValues: {
@@ -38,6 +44,7 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
       country: "",
       lat: 0,
       lng: 0,
+      organizerId: null,
       organizerName: "",
       organizerWebsite: "",
     },
@@ -52,6 +59,7 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
           country: track.country,
           lat: track.lat,
           lng: track.lng,
+          organizerId: track.organizerId || null,
           organizerName: track.organizerName || "",
           organizerWebsite: track.organizerWebsite || "",
         });
@@ -61,6 +69,7 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
           country: "",
           lat: 0,
           lng: 0,
+          organizerId: null,
           organizerName: "",
           organizerWebsite: "",
         });
@@ -173,10 +182,49 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
 
             <FormField
               control={form.control}
+              name="organizerId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Select Organizer (Optional)</FormLabel>
+                  <Select
+                    value={field.value || undefined}
+                    onValueChange={(value) => {
+                      field.onChange(value || null);
+                      const selectedOrganizer = organizers?.find(o => o.id === value);
+                      if (selectedOrganizer) {
+                        form.setValue("organizerName", selectedOrganizer.name);
+                        form.setValue("organizerWebsite", selectedOrganizer.website);
+                      }
+                    }}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-organizer">
+                        <SelectValue placeholder="Choose an existing organizer or enter manually below" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {organizers?.map((organizer) => (
+                        <SelectItem key={organizer.id} value={organizer.id}>
+                          {organizer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Select a saved organizer or manually enter details below
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="organizerName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Organizer Name (Optional)</FormLabel>
+                  <FormLabel>Organizer Name (Manual)</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="e.g. Circuit de Spa-Francorchamps" data-testid="input-organizer-name" />
                   </FormControl>
@@ -190,7 +238,7 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
               name="organizerWebsite"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Organizer Website (Optional)</FormLabel>
+                  <FormLabel>Organizer Website (Manual)</FormLabel>
                   <FormControl>
                     <Input {...field} type="url" placeholder="https://www.spa-francorchamps.be" data-testid="input-organizer-website" />
                   </FormControl>
