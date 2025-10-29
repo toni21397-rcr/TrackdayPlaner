@@ -5,6 +5,7 @@ import {
   Car,
   Map,
   Settings as SettingsIcon,
+  ShoppingCart,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -29,6 +30,11 @@ const menuItems = [
     title: "Trackdays",
     url: "/trackdays",
     icon: Calendar,
+  },
+  {
+    title: "Booking",
+    url: "/booking",
+    icon: ShoppingCart,
   },
   {
     title: "Tracks",
