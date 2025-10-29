@@ -49,6 +49,7 @@ export default function Organizers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organizers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tracks"] });
       toast({
         title: editingOrganizer ? "Organizer updated" : "Organizer created",
         description: `Successfully ${editingOrganizer ? "updated" : "created"} organizer.`,
@@ -72,6 +73,7 @@ export default function Organizers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organizers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tracks"] });
       toast({
         title: "Organizer deleted",
         description: "Successfully deleted organizer.",
