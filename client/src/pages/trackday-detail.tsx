@@ -77,8 +77,8 @@ export default function TrackdayDetail() {
       <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/trackdays">
-            <Button variant="ghost" size="sm" data-testid="button-back">
+          <Link href="/trackdays" data-testid="link-back-to-trackdays">
+            <Button variant="ghost" size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Trackdays
             </Button>

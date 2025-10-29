@@ -21,11 +21,11 @@ export function TimelineTab({ trackdayId }: TimelineTabProps) {
 
   const getBlockColor = (type: string) => {
     const colors: Record<string, string> = {
-      registration: "bg-blue-500/20 border-blue-500/50",
-      session: "bg-green-500/20 border-green-500/50",
-      break: "bg-gray-500/20 border-gray-500/50",
-      lunch: "bg-orange-500/20 border-orange-500/50",
-      other: "bg-purple-500/20 border-purple-500/50",
+      registration: "bg-primary/10 border-primary/30",
+      session: "bg-primary/20 border-primary/40",
+      break: "bg-muted border-border",
+      lunch: "bg-accent/20 border-accent/40",
+      other: "bg-secondary/20 border-secondary/40",
     };
     return colors[type] || colors.other;
   };

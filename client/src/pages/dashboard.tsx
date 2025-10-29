@@ -143,9 +143,8 @@ export default function Dashboard() {
                     <Link
                       key={trackday.id}
                       href={`/trackdays/${trackday.id}`}
-                      data-testid={`link-trackday-${trackday.id}`}
                     >
-                      <div className="flex gap-3 p-3 rounded-lg hover-elevate active-elevate-2 border cursor-pointer">
+                      <div className="flex gap-3 p-3 rounded-lg hover-elevate active-elevate-2 border cursor-pointer" data-testid={`card-upcoming-trackday-${trackday.id}`}>
                         <div className="flex flex-col items-center justify-center bg-primary/10 text-primary rounded-md p-2 min-w-[3rem]">
                           <div className="text-sm font-mono font-semibold">
                             {format(new Date(trackday.date), "MMM")}

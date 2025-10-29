@@ -27,7 +27,15 @@ export default function Trackdays() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const { data: trackdays, isLoading } = useQuery<Array<Trackday & { track: Track; vehicle?: Vehicle }>>({
-    queryKey: ["/api/trackdays", { year, participationStatus: participationFilter }],
+    queryKey: ["/api/trackdays", year, participationFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (year && year !== "all") params.append("year", year);
+      if (participationFilter && participationFilter !== "all") params.append("participationStatus", participationFilter);
+      const response = await fetch(`/api/trackdays?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to fetch trackdays");
+      return response.json();
+    },
   });
 
   const filteredTrackdays = trackdays?.filter((td) => {
@@ -112,7 +120,7 @@ export default function Trackdays() {
         ) : filteredTrackdays && filteredTrackdays.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTrackdays.map((trackday) => (
-              <Link key={trackday.id} href={`/trackdays/${trackday.id}`}>
+              <Link key={trackday.id} href={`/trackdays/${trackday.id}`} data-testid={`link-trackday-card-${trackday.id}`}>
                 <Card className="h-full hover-elevate active-elevate-2 cursor-pointer">
                   <CardContent className="p-6 space-y-4">
                     <div className="flex items-start justify-between gap-2">
