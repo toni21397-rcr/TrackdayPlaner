@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Globe, Mail, Phone } from "lucide-react";
+import { Plus, Pencil, Trash2, Globe, Mail, Phone, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -243,6 +243,7 @@ export default function Organizers() {
 
         {!organizers || organizers.length === 0 ? (
           <EmptyState
+            icon={Building2}
             title="No organizers yet"
             description="Add your first trackday organizer to start managing booking contacts."
             actionLabel="Add Organizer"

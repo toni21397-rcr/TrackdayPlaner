@@ -203,7 +203,6 @@ export function TrackDialog({ open, onOpenChange, track }: TrackDialogProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
                       {organizers?.map((organizer) => (
                         <SelectItem key={organizer.id} value={organizer.id}>
                           {organizer.name}

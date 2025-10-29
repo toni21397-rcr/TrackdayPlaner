@@ -70,7 +70,8 @@ Preferred communication style: Simple, everyday language.
 **Data Models:**
 - **users** - User authentication profiles (id, email, firstName, lastName, profileImageUrl, timestamps)
 - **sessions** - Express session storage (sid, sess, expire)
-- **tracks** - Race track locations with GPS coordinates, organizer name, and organizer website for booking
+- **organizers** - Trackday event organizers (id, name, website, contactEmail, contactPhone, description, timestamps)
+- **tracks** - Race track locations with GPS coordinates and optional organizer relationship (organizerId foreign key, organizerName/organizerWebsite for manual override)
 - **trackdays** - Scheduled events with participation status (planned/registered/attended/cancelled) and route geometry
 - **cost_items** - Line items with payment tracking (planned/invoiced/paid/refunded) and travel cost auto-generation
 - **vehicles** - User's vehicles with fuel consumption data
@@ -154,6 +155,30 @@ Preferred communication style: Simple, everyday language.
     - Redirects to trackday detail page after creation
 - Enables seamless workflow: browse organizer site → transfer details → create trackday
 - Empty state guides users to add organizer information to tracks
+
+**Organizer Management:**
+- Dedicated Organizers page (`/organizers`) accessible via sidebar navigation (Building2 icon)
+- Complete CRUD operations for trackday organizers:
+  - Create new organizers with name, website, contact email, contact phone, and description
+  - Edit existing organizers
+  - Delete organizers (track associations are preserved as manual fields)
+- Organizers can be associated with tracks via foreign key relationship:
+  - Track dialog includes organizer selector dropdown
+  - Selecting an organizer auto-populates organizerName and organizerWebsite fields
+  - Manual override capability - users can still enter/edit organizer details directly
+  - Optional field - tracks don't require an associated organizer
+- Organizer data structure:
+  - id (UUID, primary key)
+  - name (required) - Organization or company name
+  - website (required) - Booking website URL
+  - contactEmail (optional) - Contact email for bookings
+  - contactPhone (optional) - Contact phone number
+  - description (optional) - Additional information about the organizer
+- API endpoints: GET, POST, PATCH, DELETE at `/api/organizers`
+- EmptyState component with Building2 icon when no organizers exist
+- Grid layout for organizer cards with edit/delete actions
+- Form validation using Zod schemas from shared schema
+- Integration with booking system - organizer websites displayed in booking page iframes
 
 **Weather Forecasting:**
 - OpenWeather API (configurable via OPEN_WEATHER_API_KEY in settings)
