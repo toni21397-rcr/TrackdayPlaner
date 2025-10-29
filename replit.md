@@ -16,7 +16,7 @@ Preferred communication style: Simple, everyday language.
 
 **Framework:** React 18+ with TypeScript, using functional components and hooks throughout.
 
-**Routing:** Wouter - A lightweight client-side routing solution providing navigation between dashboard, trackdays, tracks, vehicles, map, and settings pages.
+**Routing:** Wouter - A lightweight client-side routing solution providing navigation between dashboard, trackdays, booking, tracks, vehicles, map, and settings pages.
 
 **State Management:** 
 - TanStack Query (React Query) for server state management with automatic caching, background refetching disabled (staleTime: Infinity)
@@ -70,7 +70,7 @@ Preferred communication style: Simple, everyday language.
 **Data Models:**
 - **users** - User authentication profiles (id, email, firstName, lastName, profileImageUrl, timestamps)
 - **sessions** - Express session storage (sid, sess, expire)
-- **tracks** - Race track locations with GPS coordinates
+- **tracks** - Race track locations with GPS coordinates, organizer name, and organizer website for booking
 - **trackdays** - Scheduled events with participation status (planned/registered/attended/cancelled) and route geometry
 - **cost_items** - Line items with payment tracking (planned/invoiced/paid/refunded) and travel cost auto-generation
 - **vehicles** - User's vehicles with fuel consumption data
@@ -129,13 +129,24 @@ Preferred communication style: Simple, everyday language.
 ### External Dependencies
 
 **Mapping & Routing:**
-- OpenRouteService API (configurable via OPENROUTE_SERVICE_KEY in settings)
-- Fallback to mock data when API key unavailable
+- Google Maps Directions API (configurable via GOOGLE_MAPS_API_KEY in settings) - Primary route calculation method
+- OpenRouteService API (configurable via OPENROUTE_SERVICE_KEY in settings) - Secondary fallback
+- Haversine distance calculation - Final fallback when no API keys available
+- Tiered fallback system ensures routes always work: Google Maps → OpenRouteService → Haversine
+- Google Maps polyline decoding for exact route matching with navigation
 - Calculates distance, duration, fuel costs, and toll estimates
 - Results stored on trackday record and auto-generated as cost items (isTravelAuto=true)
-- Google Maps integration for mobile navigation (no API key required)
+- Google Maps integration for mobile navigation
 - QR code generation using qrcode library for easy mobile route sharing
 - Three methods to access route on phone: QR scan, copy link, direct navigation button
+
+**Trackday Booking:**
+- Dedicated Booking page (`/booking`) accessible via sidebar navigation
+- Lists all tracks with organizer websites for easy booking access
+- Track cards display organizer name, location, coordinates, and direct links to booking websites
+- All organizer websites open in new tabs with proper security (rel="noopener noreferrer")
+- Empty state guides users to add organizer information to tracks
+- "How Booking Works" info card explains the booking process
 
 **Weather Forecasting:**
 - OpenWeather API (configurable via OPEN_WEATHER_API_KEY in settings)
