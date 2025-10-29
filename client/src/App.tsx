@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
 import Dashboard from "@/pages/dashboard";
 import Trackdays from "@/pages/trackdays";
 import TrackdayDetail from "@/pages/trackday-detail";
@@ -47,7 +48,10 @@ export default function App() {
               <div className="flex flex-col flex-1 overflow-hidden">
                 <header className="flex items-center justify-between p-2 border-b shrink-0">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <ThemeToggle />
+                  <div className="flex items-center gap-2">
+                    <UserMenu />
+                    <ThemeToggle />
+                  </div>
                 </header>
                 <main className="flex-1 overflow-hidden">
                   <Router />
