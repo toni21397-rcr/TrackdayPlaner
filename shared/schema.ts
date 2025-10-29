@@ -65,6 +65,8 @@ export interface Track {
   country: string;
   lat: number;
   lng: number;
+  organizerName: string;
+  organizerWebsite: string;
 }
 
 export const insertTrackSchema = z.object({
@@ -72,6 +74,8 @@ export const insertTrackSchema = z.object({
   country: z.string().min(1, "Country is required"),
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
+  organizerName: z.string().default(""),
+  organizerWebsite: z.string().url().or(z.literal("")).default(""),
 });
 
 export type InsertTrack = z.infer<typeof insertTrackSchema>;
@@ -249,6 +253,7 @@ export interface Settings {
   annualBudgetCents: number;
   openRouteServiceKey: string;
   openWeatherApiKey: string;
+  googleMapsApiKey: string;
 }
 
 export const insertSettingsSchema = z.object({
@@ -260,6 +265,7 @@ export const insertSettingsSchema = z.object({
   annualBudgetCents: z.number().min(0).default(500000),
   openRouteServiceKey: z.string().default(""),
   openWeatherApiKey: z.string().default(""),
+  googleMapsApiKey: z.string().default(""),
 });
 
 export type InsertSettings = z.infer<typeof insertSettingsSchema>;
@@ -302,6 +308,8 @@ export const tracks = pgTable("tracks", {
   country: varchar("country", { length: 100 }).notNull(),
   lat: real("lat").notNull(),
   lng: real("lng").notNull(),
+  organizerName: text("organizer_name").notNull().default(""),
+  organizerWebsite: text("organizer_website").notNull().default(""),
 });
 
 export const trackdays = pgTable("trackdays", {
@@ -390,6 +398,7 @@ export const settings = pgTable("settings", {
   annualBudgetCents: integer("annual_budget_cents").notNull().default(500000),
   openRouteServiceKey: text("open_route_service_key").notNull().default(""),
   openWeatherApiKey: text("open_weather_api_key").notNull().default(""),
+  googleMapsApiKey: text("google_maps_api_key").notNull().default(""),
 });
 
 export const weatherCache = pgTable("weather_cache", {
