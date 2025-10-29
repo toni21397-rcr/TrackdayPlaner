@@ -133,6 +133,9 @@ Preferred communication style: Simple, everyday language.
 - Fallback to mock data when API key unavailable
 - Calculates distance, duration, fuel costs, and toll estimates
 - Results stored on trackday record and auto-generated as cost items (isTravelAuto=true)
+- Google Maps integration for mobile navigation (no API key required)
+- QR code generation using qrcode library for easy mobile route sharing
+- Three methods to access route on phone: QR scan, copy link, direct navigation button
 
 **Weather Forecasting:**
 - OpenWeather API (configurable via OPEN_WEATHER_API_KEY in settings)
@@ -140,10 +143,19 @@ Preferred communication style: Simple, everyday language.
 - Fallback to mock data when unavailable
 - Weather data tied to trackday dates and track GPS coordinates
 
+**Mobile Navigation:**
+- Google Maps integration for turn-by-turn navigation (no API key required)
+- ShareRouteDialog component with QR code generation for instant phone access
+- Copy-to-clipboard functionality with toast notifications
+- Navigation icon buttons on trackday cards for quick access
+- Google Maps URLs use format: `https://www.google.com/maps/dir/?api=1&origin=LAT,LNG&destination=LAT,LNG&travelmode=driving`
+- Requires home location to be set in Settings for all Google Maps features to appear
+
 **Charts & Visualization:**
 - Recharts library for monthly spending bar charts
 - Custom KPI cards for dashboard metrics
-- No map visualization currently implemented (placeholder in map page)
+- Leaflet-based map visualization (MapView component) displaying route geometry from OpenRouteService
+- Interactive route display with zoom controls and responsive design
 
 **UI Icons:** Lucide React - Consistent icon library used throughout the application
 
