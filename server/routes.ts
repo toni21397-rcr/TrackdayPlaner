@@ -59,12 +59,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/organizers/:id", async (req, res) => {
+  app.patch("/api/organizers/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const data = insertOrganizerSchema.parse(req.body);
-      const organizer = await storage.updateOrganizer(req.params.id, data);
+      const organizer = await storage.getOrganizer(req.params.id);
       if (!organizer) return res.status(404).json({ error: "Organizer not found" });
-      res.json(organizer);
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, organizer.createdBy, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to modify this organizer" });
+      }
+      
+      const data = insertOrganizerSchema.parse(req.body);
+      const updated = await storage.updateOrganizer(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Organizer not found" });
+      res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -113,12 +123,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/tracks/:id", async (req, res) => {
+  app.patch("/api/tracks/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const data = insertTrackSchema.parse(req.body);
-      const track = await storage.updateTrack(req.params.id, data);
+      const track = await storage.getTrack(req.params.id);
       if (!track) return res.status(404).json({ error: "Track not found" });
-      res.json(track);
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, track.createdBy, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to modify this track" });
+      }
+      
+      const data = insertTrackSchema.parse(req.body);
+      const updated = await storage.updateTrack(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Track not found" });
+      res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -145,7 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Seed tracks from comprehensive database
-  app.post("/api/seed-tracks", async (req, res) => {
+  app.post("/api/seed-tracks", isAuthenticated, async (req, res) => {
     try {
       const result = await seedTracks(storage);
       res.json({
@@ -195,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ ...trackday, track, vehicle });
   });
 
-  app.post("/api/trackdays", async (req, res) => {
+  app.post("/api/trackdays", isAuthenticated, async (req, res) => {
     try {
       const data = insertTrackdaySchema.parse(req.body);
       const trackday = await storage.createTrackday(data);
@@ -205,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/trackdays/:id", async (req, res) => {
+  app.patch("/api/trackdays/:id", isAuthenticated, async (req, res) => {
     try {
       const data = insertTrackdaySchema.partial().parse(req.body);
       const trackday = await storage.updateTrackday(req.params.id, data);
@@ -216,14 +236,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/trackdays/:id", async (req, res) => {
+  app.delete("/api/trackdays/:id", isAuthenticated, async (req, res) => {
     const deleted = await storage.deleteTrackday(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Trackday not found" });
     res.json({ success: true });
   });
 
   // Route calculation
-  app.post("/api/trackdays/:id/calculate-route", async (req, res) => {
+  app.post("/api/trackdays/:id/calculate-route", isAuthenticated, async (req, res) => {
     const trackday = await storage.getTrackday(req.params.id);
     if (!trackday) return res.status(404).json({ error: "Trackday not found" });
     
@@ -312,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(items);
   });
 
-  app.post("/api/cost-items", async (req, res) => {
+  app.post("/api/cost-items", isAuthenticated, async (req, res) => {
     try {
       const data = insertCostItemSchema.parse(req.body);
       const item = await storage.createCostItem(data);
@@ -322,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/cost-items/:id", async (req, res) => {
+  app.patch("/api/cost-items/:id", isAuthenticated, async (req, res) => {
     try {
       const data = insertCostItemSchema.partial().parse(req.body);
       const item = await storage.updateCostItem(req.params.id, data);
@@ -333,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/cost-items/:id", async (req, res) => {
+  app.delete("/api/cost-items/:id", isAuthenticated, async (req, res) => {
     const deleted = await storage.deleteCostItem(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Cost item not found" });
     res.json({ success: true });
@@ -352,7 +372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(enriched);
   });
 
-  app.post("/api/vehicles", async (req, res) => {
+  app.post("/api/vehicles", isAuthenticated, async (req, res) => {
     try {
       const data = insertVehicleSchema.parse(req.body);
       const vehicle = await storage.createVehicle(data);
@@ -362,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/vehicles/:id", async (req, res) => {
+  app.patch("/api/vehicles/:id", isAuthenticated, async (req, res) => {
     try {
       const data = insertVehicleSchema.parse(req.body);
       const vehicle = await storage.updateVehicle(req.params.id, data);
@@ -373,14 +393,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/vehicles/:id", async (req, res) => {
+  app.delete("/api/vehicles/:id", isAuthenticated, async (req, res) => {
     const deleted = await storage.deleteVehicle(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Vehicle not found" });
     res.json({ success: true });
   });
 
   // ============ MAINTENANCE LOGS ============
-  app.post("/api/maintenance", async (req, res) => {
+  app.post("/api/maintenance", isAuthenticated, async (req, res) => {
     try {
       const data = insertMaintenanceLogSchema.parse(req.body);
       const log = await storage.createMaintenanceLog(data);
@@ -399,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(blocks);
   });
 
-  app.post("/api/schedule-blocks", async (req, res) => {
+  app.post("/api/schedule-blocks", isAuthenticated, async (req, res) => {
     try {
       const data = insertScheduleBlockSchema.parse(req.body);
       const block = await storage.createScheduleBlock(data);
@@ -425,7 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(enriched);
   });
 
-  app.post("/api/sessions", async (req, res) => {
+  app.post("/api/sessions", isAuthenticated, async (req, res) => {
     try {
       const data = insertTrackSessionSchema.parse(req.body);
       const session = await storage.createTrackSession(data);
@@ -436,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ LAPS ============
-  app.post("/api/laps", async (req, res) => {
+  app.post("/api/laps", isAuthenticated, async (req, res) => {
     try {
       const data = insertLapSchema.parse(req.body);
       const lap = await storage.createLap(data);
@@ -446,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/laps/bulk", async (req, res) => {
+  app.post("/api/laps/bulk", isAuthenticated, async (req, res) => {
     try {
       const { laps } = req.body;
       if (!Array.isArray(laps)) {
@@ -479,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(settings);
   });
 
-  app.put("/api/settings", async (req, res) => {
+  app.put("/api/settings", isAuthenticated, async (req, res) => {
     try {
       const data = insertSettingsSchema.parse(req.body);
       const settings = await storage.updateSettings(data);
@@ -499,7 +519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/weather/:trackdayId/refresh", async (req, res) => {
+  app.post("/api/weather/:trackdayId/refresh", isAuthenticated, async (req, res) => {
     const trackday = await storage.getTrackday(req.params.trackdayId);
     if (!trackday) return res.status(404).json({ error: "Trackday not found" });
     

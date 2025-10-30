@@ -31,8 +31,9 @@ export default function AdminUsers() {
     mutationFn: async (userId: string) => {
       return await apiRequest("PATCH", `/api/admin/users/${userId}/toggle-admin`, {});
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/admin/users"] });
       toast({
         title: "User updated",
         description: "Admin status has been changed successfully.",
