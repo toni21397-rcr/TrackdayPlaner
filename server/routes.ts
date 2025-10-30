@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { isAdmin, canModifyResource } from "./adminMiddleware";
 import { seedTracks } from "./seed-tracks";
 import {
   insertOrganizerSchema,
@@ -47,10 +48,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(organizer);
   });
 
-  app.post("/api/organizers", async (req, res) => {
+  app.post("/api/organizers", isAuthenticated, async (req: any, res) => {
     try {
       const data = insertOrganizerSchema.parse(req.body);
-      const organizer = await storage.createOrganizer(data);
+      const userId = req.user.claims.sub;
+      const organizer = await storage.createOrganizer({ ...data, createdBy: userId });
       res.json(organizer);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -68,10 +70,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/organizers/:id", async (req, res) => {
-    const deleted = await storage.deleteOrganizer(req.params.id);
-    if (!deleted) return res.status(404).json({ error: "Organizer not found" });
-    res.json({ success: true });
+  app.delete("/api/organizers/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizer = await storage.getOrganizer(req.params.id);
+      if (!organizer) return res.status(404).json({ error: "Organizer not found" });
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, organizer.createdBy, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to delete this organizer" });
+      }
+      
+      const deleted = await storage.deleteOrganizer(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Organizer not found" });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // ============ TRACKS ============
@@ -86,10 +102,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(track);
   });
 
-  app.post("/api/tracks", async (req, res) => {
+  app.post("/api/tracks", isAuthenticated, async (req: any, res) => {
     try {
       const data = insertTrackSchema.parse(req.body);
-      const track = await storage.createTrack(data);
+      const userId = req.user.claims.sub;
+      const track = await storage.createTrack({ ...data, createdBy: userId });
       res.json(track);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -107,10 +124,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/tracks/:id", async (req, res) => {
-    const deleted = await storage.deleteTrack(req.params.id);
-    if (!deleted) return res.status(404).json({ error: "Track not found" });
-    res.json({ success: true });
+  app.delete("/api/tracks/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const track = await storage.getTrack(req.params.id);
+      if (!track) return res.status(404).json({ error: "Track not found" });
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, track.createdBy, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to delete this track" });
+      }
+      
+      const deleted = await storage.deleteTrack(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Track not found" });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Seed tracks from comprehensive database

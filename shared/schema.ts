@@ -66,6 +66,7 @@ export interface Organizer {
   contactEmail: string;
   contactPhone: string;
   description: string;
+  createdBy?: string | null;
 }
 
 export const insertOrganizerSchema = z.object({
@@ -74,6 +75,7 @@ export const insertOrganizerSchema = z.object({
   contactEmail: z.string().email().or(z.literal("")).default(""),
   contactPhone: z.string().default(""),
   description: z.string().default(""),
+  createdBy: z.string().nullable().optional(),
 });
 
 export type InsertOrganizer = z.infer<typeof insertOrganizerSchema>;
@@ -88,6 +90,7 @@ export interface Track {
   organizerId: string | null;
   organizerName: string;
   organizerWebsite: string;
+  createdBy?: string | null;
 }
 
 export const insertTrackSchema = z.object({
@@ -98,6 +101,7 @@ export const insertTrackSchema = z.object({
   organizerId: z.string().nullable().default(null),
   organizerName: z.string().default(""),
   organizerWebsite: z.string().url().or(z.literal("")).default(""),
+  createdBy: z.string().nullable().optional(),
 });
 
 export type InsertTrack = z.infer<typeof insertTrackSchema>;
@@ -348,6 +352,7 @@ export const organizers = pgTable("organizers", {
   contactEmail: varchar("contact_email", { length: 255 }).notNull().default(""),
   contactPhone: varchar("contact_phone", { length: 50 }).notNull().default(""),
   description: text("description").notNull().default(""),
+  createdBy: varchar("created_by"), // null = system/admin created, otherwise user ID
 });
 
 export const tracks = pgTable("tracks", {
@@ -359,6 +364,7 @@ export const tracks = pgTable("tracks", {
   organizerId: varchar("organizer_id").references(() => organizers.id, { onDelete: "set null" }),
   organizerName: text("organizer_name").notNull().default(""),
   organizerWebsite: text("organizer_website").notNull().default(""),
+  createdBy: varchar("created_by"), // null = system/admin created, otherwise user ID
 });
 
 export const trackdays = pgTable("trackdays", {
@@ -486,6 +492,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
