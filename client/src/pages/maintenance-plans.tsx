@@ -26,11 +26,7 @@ export default function MaintenancePlansPage() {
 
   const createPlanMutation = useMutation({
     mutationFn: async (data: InsertMaintenancePlan) =>
-      await apiRequest("/api/maintenance-plans", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      }),
+      await apiRequest("POST", "/api/maintenance-plans", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-plans"] });
       setIsDialogOpen(false);
@@ -43,11 +39,7 @@ export default function MaintenancePlansPage() {
 
   const updatePlanMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertMaintenancePlan> }) =>
-      await apiRequest(`/api/maintenance-plans/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      }),
+      await apiRequest("PATCH", `/api/maintenance-plans/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-plans"] });
       setIsDialogOpen(false);
@@ -61,7 +53,7 @@ export default function MaintenancePlansPage() {
 
   const deletePlanMutation = useMutation({
     mutationFn: async (id: string) =>
-      await apiRequest(`/api/maintenance-plans/${id}`, { method: "DELETE" }),
+      await apiRequest("DELETE", `/api/maintenance-plans/${id}`, undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-plans"] });
       toast({ title: "Maintenance plan deleted successfully" });
@@ -213,22 +205,24 @@ function PlanCard({
               {plan.name}
             </CardTitle>
             <CardDescription className="mt-1">
-              {plan.cadenceConfig.type === "trackday_event" && (
-                <Badge variant="secondary">Trackday Event</Badge>
-              )}
-              {plan.cadenceConfig.type === "time_interval" && (
+              {plan.cadenceType === "trackday" && (
                 <Badge variant="secondary">
-                  Every {plan.cadenceConfig.intervalDays} days
+                  Every {plan.cadenceConfig.trackday?.afterEveryN || 1} trackday{(plan.cadenceConfig.trackday?.afterEveryN || 1) > 1 ? 's' : ''}
                 </Badge>
               )}
-              {plan.cadenceConfig.type === "odometer" && (
+              {plan.cadenceType === "time_interval" && (
                 <Badge variant="secondary">
-                  Every {plan.cadenceConfig.odometerKm} km
+                  Every {plan.cadenceConfig.time_interval?.intervalDays} days
                 </Badge>
               )}
-              {plan.cadenceConfig.type === "engine_hours" && (
+              {plan.cadenceType === "odometer" && (
                 <Badge variant="secondary">
-                  Every {plan.cadenceConfig.engineHours} hours
+                  Every {plan.cadenceConfig.odometer?.intervalKm} km
+                </Badge>
+              )}
+              {plan.cadenceType === "engine_hours" && (
+                <Badge variant="secondary">
+                  Every {plan.cadenceConfig.engine_hours?.intervalHours} hours
                 </Badge>
               )}
             </CardDescription>
@@ -284,13 +278,12 @@ function MaintenancePlanDialog({
       name: "",
       description: "",
       isTemplate: false,
-      cadenceConfig: {
-        type: "trackday_event",
-      },
+      cadenceType: "trackday",
+      cadenceConfig: {},
     },
   });
 
-  const cadenceType = form.watch("cadenceConfig.type");
+  const cadenceType = form.watch("cadenceType");
 
   return (
     <DialogContent className="max-w-lg" data-testid="dialog-maintenance-plan">
@@ -343,7 +336,7 @@ function MaintenancePlanDialog({
 
           <FormField
             control={form.control}
-            name="cadenceConfig.type"
+            name="cadenceType"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Trigger Type</FormLabel>
@@ -354,7 +347,7 @@ function MaintenancePlanDialog({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="trackday_event">Trackday Event</SelectItem>
+                    <SelectItem value="trackday">Trackday</SelectItem>
                     <SelectItem value="time_interval">Time Interval</SelectItem>
                     <SelectItem value="odometer">Odometer</SelectItem>
                     <SelectItem value="engine_hours">Engine Hours</SelectItem>
@@ -368,10 +361,36 @@ function MaintenancePlanDialog({
             )}
           />
 
+          {cadenceType === "trackday" && (
+            <FormField
+              control={form.control}
+              name="cadenceConfig.trackday.afterEveryN"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>After Every N Trackdays</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? 1}
+                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                      placeholder="e.g., 1"
+                      data-testid="input-trackday-after-n"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Tasks will trigger after every N trackdays
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
           {cadenceType === "time_interval" && (
             <FormField
               control={form.control}
-              name="cadenceConfig.intervalDays"
+              name="cadenceConfig.time_interval.intervalDays"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Interval (Days)</FormLabel>
@@ -379,7 +398,7 @@ function MaintenancePlanDialog({
                     <Input
                       type="number"
                       {...field}
-                      value={field.value || ""}
+                      value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.valueAsNumber)}
                       placeholder="e.g., 30"
                       data-testid="input-interval-days"
@@ -397,7 +416,7 @@ function MaintenancePlanDialog({
           {cadenceType === "odometer" && (
             <FormField
               control={form.control}
-              name="cadenceConfig.odometerKm"
+              name="cadenceConfig.odometer.intervalKm"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Odometer Interval (km)</FormLabel>
@@ -405,7 +424,7 @@ function MaintenancePlanDialog({
                     <Input
                       type="number"
                       {...field}
-                      value={field.value || ""}
+                      value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.valueAsNumber)}
                       placeholder="e.g., 5000"
                       data-testid="input-odometer-km"
@@ -423,7 +442,7 @@ function MaintenancePlanDialog({
           {cadenceType === "engine_hours" && (
             <FormField
               control={form.control}
-              name="cadenceConfig.engineHours"
+              name="cadenceConfig.engine_hours.intervalHours"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Engine Hours Interval</FormLabel>
@@ -431,7 +450,7 @@ function MaintenancePlanDialog({
                     <Input
                       type="number"
                       {...field}
-                      value={field.value || ""}
+                      value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.valueAsNumber)}
                       placeholder="e.g., 50"
                       data-testid="input-engine-hours"
