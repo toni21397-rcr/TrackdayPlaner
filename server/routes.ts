@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { isAdmin, canModifyResource } from "./adminMiddleware";
 import { seedTracks } from "./seed-tracks";
+import { seedMotorcycles } from "./seed-motorcycles";
 import multer from "multer";
 import Papa from "papaparse";
 import {
@@ -184,6 +185,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error seeding tracks:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Seed motorcycle models from comprehensive database
+  app.post("/api/seed-motorcycles", isAuthenticated, async (req, res) => {
+    try {
+      const result = await seedMotorcycles(storage);
+      res.json({
+        message: `Successfully seeded ${result.added} motorcycle models`,
+        ...result
+      });
+    } catch (error: any) {
+      console.error("Error seeding motorcycle models:", error);
       res.status(500).json({ error: error.message });
     }
   });
