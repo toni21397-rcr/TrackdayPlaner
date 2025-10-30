@@ -367,6 +367,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ VEHICLES ============
+  app.get("/api/vehicles/:id", isAuthenticated, async (req: any, res) => {
+    const { id } = req.params;
+    const vehicle = await storage.getVehicle(id);
+    
+    if (!vehicle) {
+      return res.status(404).json({ error: "Vehicle not found" });
+    }
+    
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    
+    // Check authorization
+    if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    res.json(vehicle);
+  });
+
   app.get("/api/vehicles", async (req, res) => {
     const vehicles = await storage.getVehicles();
     
@@ -966,7 +985,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const plan of plans) {
         const vehicle = await storage.getVehicle(plan.vehicleId);
         if (vehicle && canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
-          filteredPlans.push(plan);
+          // Populate plan details and checklist items
+          const planDetails = await storage.getMaintenancePlan(plan.planId);
+          const checklistItems = await storage.getPlanChecklistItems(plan.planId);
+          filteredPlans.push({
+            ...plan,
+            plan: planDetails,
+            checklistItems
+          });
         }
       }
       
