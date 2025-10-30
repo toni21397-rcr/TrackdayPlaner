@@ -18,6 +18,7 @@ import SettingsPage from "@/pages/settings";
 import Booking from "@/pages/booking";
 import BookingDetail from "@/pages/booking-detail";
 import Organizers from "@/pages/organizers";
+import MaintenancePlans from "@/pages/maintenance-plans";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminUsers from "@/pages/admin-users";
 import NotFound from "@/pages/not-found";
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/vehicles" component={Vehicles} />
       <Route path="/booking" component={Booking} />
       <Route path="/booking/:trackId" component={BookingDetail} />
+      <Route path="/maintenance-plans" component={MaintenancePlans} />
       <Route path="/map" component={MapPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/admin" component={AdminDashboard} />

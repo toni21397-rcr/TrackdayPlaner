@@ -9,6 +9,7 @@ import {
   Building2,
   Shield,
   ChevronDown,
+  ListChecks,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -52,6 +53,11 @@ const mainMenuItems = [
     title: "My Bike",
     url: "/vehicles",
     icon: Car,
+  },
+  {
+    title: "Maintenance Plans",
+    url: "/maintenance-plans",
+    icon: ListChecks,
   },
   {
     title: "My Map",

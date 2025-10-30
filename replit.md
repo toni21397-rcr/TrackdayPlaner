@@ -1,260 +1,77 @@
 # Trackday Planner
 
 ## Overview
-
-Trackday Planner is a full-stack web application designed to help users plan, track, and analyze their yearly track days. The application manages events, costs, budgets, vehicles, maintenance, routes, weather forecasts, and lap times. It provides comprehensive dashboards with KPI cards, budget tracking, monthly spending charts, and detailed event management.
-
-**Core Purpose:** Enable motorsport enthusiasts to organize their track day calendar, monitor expenses against budgets, calculate travel costs with route planning, track vehicle maintenance, and analyze performance through lap time data.
+Trackday Planner is a full-stack web application for motorsport enthusiasts to plan, track, and analyze their yearly track days. It provides comprehensive tools for managing events, expenses, budgets, vehicles, maintenance, routes, weather, and lap times. The application aims to organize track day calendars, monitor spending, calculate travel costs, track vehicle maintenance, and analyze performance.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
+### Frontend
+- **Framework:** React 18+ with TypeScript, functional components, and hooks.
+- **Routing:** Wouter for client-side navigation.
+- **State Management:** TanStack Query for server state (caching enabled, background refetching disabled), React Hook Form with Zod for form state.
+- **UI:** Radix UI primitives with shadcn/ui styling ("new-york" style, neutral base color, CVA for variants, CSS variables for theming, light/dark mode).
+- **Styling:** TailwindCSS (custom config), inspired by Linear/Notion, Material Design principles, custom HSL color system, Inter/IBM Plex Sans fonts, 2-24 spacing primitives, 12-column responsive grid (md 768px, lg 1024px).
+- **Build Tool:** Vite with React plugin, custom path aliases.
 
-**Framework:** React 18+ with TypeScript, using functional components and hooks throughout.
-
-**Routing:** Wouter - A lightweight client-side routing solution providing navigation between dashboard, trackdays, booking, tracks, vehicles, map, and settings pages.
-
-**State Management:** 
-- TanStack Query (React Query) for server state management with automatic caching, background refetching disabled (staleTime: Infinity)
-- React Hook Form with Zod validation for form state
-- No global client state library - component-level state with useState/useContext
-
-**UI Component Library:** Radix UI primitives with shadcn/ui styling system
-- Design system: "new-york" style with neutral base color
-- All components follow a consistent pattern with CVA (class-variance-authority) for variants
-- CSS variables for theming with light/dark mode support
-
-**Styling:**
-- TailwindCSS with custom configuration
-- Design inspired by Linear/Notion with Material Design principles for data-rich interfaces
-- Custom color system using HSL values with CSS variables
-- Typography: Inter/IBM Plex Sans for UI, JetBrains Mono for numerical data
-- Spacing primitives: 2, 3, 4, 6, 8, 12, 16, 24
-- Responsive grid: 12-column with breakpoints at md (768px) and lg (1024px)
-
-**Build Tool:** Vite with React plugin, custom path aliases (@/, @shared/, @assets/)
-
-### Backend Architecture
-
-**Runtime:** Node.js with Express.js framework
-
-**Language:** TypeScript with ES modules (type: "module")
-
-**API Design:** RESTful API with conventional HTTP methods
-- GET for retrieving resources
-- POST for creating resources and triggering actions (route calculation, weather refresh)
-- PATCH for partial updates
-- DELETE for removing resources
-
-**Middleware Stack:**
-- express.json() with request body verification (raw body capture)
-- express.urlencoded() for form data
-- Custom logging middleware tracking request duration and JSON responses
-- Vite middleware in development mode with HMR
-
-**Route Organization:** Centralized route registration in `server/routes.ts` with all endpoints prefixed with `/api/`
+### Backend
+- **Runtime:** Node.js with Express.js.
+- **Language:** TypeScript with ES modules.
+- **API Design:** RESTful API (GET, POST, PATCH, DELETE).
+- **Middleware:** `express.json()`, `express.urlencoded()`, custom logging, Vite middleware for HMR in development.
+- **Route Organization:** Centralized in `server/routes.ts`, prefixed with `/api/`.
 
 ### Data Storage
-
-**Database:** PostgreSQL via Neon serverless driver (@neondatabase/serverless)
-
-**ORM:** Drizzle ORM with Zod schema integration
-- Schema definition in `shared/schema.ts` for type sharing between client/server
-- Migrations managed via drizzle-kit in `./migrations` directory
-- Schema-first approach with createInsertSchema() generating Zod validators
-
-**Data Models:**
-- **users** - User authentication profiles (id, email, firstName, lastName, profileImageUrl, timestamps)
-- **sessions** - Express session storage (sid, sess, expire)
-- **organizers** - Trackday event organizers (id, name, website, contactEmail, contactPhone, description, timestamps)
-- **tracks** - Race track locations with GPS coordinates and optional organizer relationship (organizerId foreign key, organizerName/organizerWebsite for manual override)
-- **trackdays** - Scheduled events with participation status (planned/registered/attended/cancelled) and route geometry
-- **cost_items** - Line items with payment tracking (planned/invoiced/paid/refunded) and travel cost auto-generation
-- **vehicles** - User's vehicles with fuel consumption data
-- **maintenance_logs** - Service records tied to vehicles
-- **trackday_schedule_blocks** - Daily timeline blocks (registration, session, break, lunch)
-- **track_sessions** - Named sessions with lap data aggregation
-- **laps** - Individual lap times with sector splits and validity flags
-- **settings** - Singleton configuration (currency, home location, fuel prices, API keys, annual budget)
-- **weather_cache** - Cached weather forecasts with 6-hour TTL
-
-**Storage Interface:** Abstract IStorage interface in `server/storage.ts` defining all CRUD operations, enabling future database swapping without changing route handlers
+- **Database:** PostgreSQL via Neon serverless driver.
+- **ORM:** Drizzle ORM with Zod schema integration (schema-first, shared via `shared/schema.ts`, migrations with drizzle-kit).
+- **Key Data Models:** `users`, `sessions`, `organizers`, `tracks`, `trackdays`, `cost_items`, `vehicles`, `maintenance_logs`, `trackday_schedule_blocks`, `track_sessions`, `laps`, `settings`, `weather_cache`.
+- **Storage Interface:** Abstract `IStorage` interface for CRUD operations.
 
 ### Authentication & Authorization
+- **Authentication System:** Replit Auth (OpenID Connect: Google, GitHub, email/password).
+- **Session Management:** PostgreSQL-backed sessions (`connect-pg-simple`), 7-day TTL, secure cookies.
+- **Implementation:** `server/replitAuth.ts` for OAuth setup, login/logout/callback routes. `isAuthenticated` middleware for route protection.
+- **Client:** `useAuth()` hook, `isUnauthorizedError()` utility.
+- **API Endpoints:** `/api/login`, `/api/callback`, `/api/logout`, `/api/auth/user`.
+- **Environment Variables:** `REPL_ID`, `SESSION_SECRET`, `DATABASE_URL`, `ISSUER_URL`.
 
-**Authentication System:** Replit Auth with OpenID Connect (supports Google, GitHub, and email/password)
+### System Design Choices
+- **Monorepo Structure:** `/client`, `/server`, `/shared` for type safety.
+- **Type Safety:** Zod schemas for runtime validation and TypeScript types; `drizzle-zod` for database schema validation.
+- **API Response Handling:** `apiRequest()` wrapper for error handling, toast notifications for mutations.
+- **Cost Tracking:** Costs stored in cents; auto-generated travel costs flagged.
+- **Performance:** Weather caching, React Query, skeleton loaders.
+- **Responsive Design:** Mobile-first, collapsible sidebar, breakpoint-aware grid, sticky header.
 
-**Session Management:** 
-- PostgreSQL-backed sessions using connect-pg-simple
-- 7-day session TTL with automatic refresh
-- Secure cookies in production, non-secure in development
-- Sessions table auto-created on first use
+## External Dependencies
 
-**Database Schema:**
-- **users** - User profiles with id (sub claim), email, firstName, lastName, profileImageUrl, timestamps
-- **sessions** - Express session storage (sid, sess JSON, expire timestamp)
+### Mapping & Routing
+- **Primary:** Google Maps Directions API (configurable via `GOOGLE_MAPS_API_KEY`).
+- **Secondary:** OpenRouteService API (configurable via `OPENROUTE_SERVICE_KEY`).
+- **Fallback:** Haversine distance calculation.
+- **Features:** Distance, duration, fuel costs, toll estimates, Google Maps polyline decoding, mobile navigation integration (QR code generation, copy link, direct navigation).
 
-**Server Implementation:**
-- `server/replitAuth.ts` - OAuth setup, login/logout/callback routes, session configuration
-- `isAuthenticated` middleware - Protects routes, refreshes expired tokens automatically
-- Dynamic callback URLs - Adapts to HTTP (development) and HTTPS (production) with port preservation
-- Strategy caching - Separate strategies per protocol+host combination
+### Trackday Booking
+- **Functionality:** Dedicated `/booking` page listing tracks and organizer websites.
+- **Booking Detail Page:** Split-screen layout with iframe for organizer website and quick-create form for trackdays (auto-populates track info, creates trackday with cost item).
 
-**Client Implementation:**
-- `useAuth()` hook - Checks authentication status, returns user profile
-- `isUnauthorizedError()` utility - Detects 401 errors for auth flow
-- `authUtils.ts` - Helper functions for authentication logic
+### Organizer Management
+- **Functionality:** `/organizers` page for CRUD operations on organizers (name, website, contact info).
+- **Integration:** Organizers can be associated with tracks; manual override for track details.
 
-**API Endpoints:**
-- `GET /api/login` - Initiates OAuth flow with Replit Auth
-- `GET /api/callback` - OAuth callback, creates/updates user, establishes session
-- `GET /api/logout` - Destroys session, redirects to Replit logout
-- `GET /api/auth/user` - Returns authenticated user profile (protected)
+### Weather Forecasting
+- OpenWeather API (configurable via `OPEN_WEATHER_API_KEY`).
+- 6-hour cache, mock data fallback.
+- Weather data linked to trackday dates and GPS coordinates.
 
-**Environment Variables:**
-- `REPL_ID` - Replit application ID (auto-provided in Replit environment)
-- `SESSION_SECRET` - Secret key for session encryption
-- `DATABASE_URL` - PostgreSQL connection string
-- `ISSUER_URL` - Optional OpenID Connect issuer override (defaults to Replit Auth)
+### Charts & Visualization
+- **Charts:** Recharts for monthly spending bar charts.
+- **Mapping:** Leaflet-based map visualization (`MapView` component) for route geometry.
 
-**Future Collaboration Features:**
-- Trackday sharing and invite links
-- Permission system (owner/editor/viewer roles)
-- Activity tracking and collaboration feed
-- Multi-user access control
+### UI Icons
+- Lucide React for consistent iconography.
 
-### External Dependencies
-
-**Mapping & Routing:**
-- Google Maps Directions API (configurable via GOOGLE_MAPS_API_KEY in settings) - Primary route calculation method
-- OpenRouteService API (configurable via OPENROUTE_SERVICE_KEY in settings) - Secondary fallback
-- Haversine distance calculation - Final fallback when no API keys available
-- Tiered fallback system ensures routes always work: Google Maps → OpenRouteService → Haversine
-- Google Maps polyline decoding for exact route matching with navigation
-- Calculates distance, duration, fuel costs, and toll estimates
-- Results stored on trackday record and auto-generated as cost items (isTravelAuto=true)
-- Google Maps integration for mobile navigation
-- QR code generation using qrcode library for easy mobile route sharing
-- Three methods to access route on phone: QR scan, copy link, direct navigation button
-
-**Trackday Booking:**
-- Dedicated Booking page (`/booking`) accessible via sidebar navigation
-- Lists all tracks with organizer websites for easy booking access
-- Track cards display organizer name, location, coordinates, and "Book & Create Trackday" buttons
-- Booking detail page (`/booking/:trackId`) with embedded organizer website view:
-  - Split-screen layout: iframe on left showing organizer website, quick-create form on right
-  - Graceful fallback for websites that block iframe embedding (X-Frame-Options)
-  - Quick-create form allows instant trackday creation with booking details:
-    - Auto-populates track information
-    - Manual entry for date, duration, vehicle, price, and notes
-    - Creates trackday with associated cost item for entry fee
-    - Redirects to trackday detail page after creation
-- Enables seamless workflow: browse organizer site → transfer details → create trackday
-- Empty state guides users to add organizer information to tracks
-
-**Organizer Management:**
-- Dedicated Organizers page (`/organizers`) accessible via sidebar navigation (Building2 icon)
-- Complete CRUD operations for trackday organizers:
-  - Create new organizers with name, website, contact email, contact phone, and description
-  - Edit existing organizers
-  - Delete organizers (track associations are preserved as manual fields)
-- Organizers can be associated with tracks via foreign key relationship:
-  - Track dialog includes organizer selector dropdown
-  - Selecting an organizer auto-populates organizerName and organizerWebsite fields
-  - Manual override capability - users can still enter/edit organizer details directly
-  - Optional field - tracks don't require an associated organizer
-- Organizer data structure:
-  - id (UUID, primary key)
-  - name (required) - Organization or company name
-  - website (required) - Booking website URL
-  - contactEmail (optional) - Contact email for bookings
-  - contactPhone (optional) - Contact phone number
-  - description (optional) - Additional information about the organizer
-- API endpoints: GET, POST, PATCH, DELETE at `/api/organizers`
-- EmptyState component with Building2 icon when no organizers exist
-- Grid layout for organizer cards with edit/delete actions
-- Form validation using Zod schemas from shared schema
-- Integration with booking system - organizer websites displayed in booking page iframes
-
-**Weather Forecasting:**
-- OpenWeather API (configurable via OPEN_WEATHER_API_KEY in settings)
-- 6-hour cache to minimize API calls
-- Fallback to mock data when unavailable
-- Weather data tied to trackday dates and track GPS coordinates
-
-**Mobile Navigation:**
-- Google Maps integration for turn-by-turn navigation (no API key required)
-- ShareRouteDialog component with QR code generation for instant phone access
-- Copy-to-clipboard functionality with toast notifications
-- Navigation icon buttons on trackday cards for quick access
-- Google Maps URLs use format: `https://www.google.com/maps/dir/?api=1&origin=LAT,LNG&destination=LAT,LNG&travelmode=driving`
-- Requires home location to be set in Settings for all Google Maps features to appear
-
-**Charts & Visualization:**
-- Recharts library for monthly spending bar charts
-- Custom KPI cards for dashboard metrics
-- Leaflet-based map visualization (MapView component) displaying route geometry from OpenRouteService
-- Interactive route display with zoom controls and responsive design
-
-**UI Icons:** Lucide React - Consistent icon library used throughout the application
-
-**Date Handling:** date-fns for formatting and date operations
-
-### Build & Deployment
-
-**Development:**
-- Concurrent dev servers: Vite frontend on one port, Express API on another
-- tsx for running TypeScript server code without compilation
-- Hot module replacement via Vite
-- Runtime error overlay via @replit/vite-plugin-runtime-error-modal
-
-**Production:**
-- Frontend: Vite builds to `dist/public` with optimized bundles
-- Backend: esbuild bundles server code to `dist/index.js` as ESM module
-- Static files served from compiled frontend directory
-- Database migrations via `npm run db:push`
-
-**Environment Variables:**
-- DATABASE_URL (required) - PostgreSQL connection string
-- NODE_ENV - development/production mode switching
-- Optional: REPL_ID for Replit-specific plugins
-
-### Key Architectural Decisions
-
-**Monorepo Structure:**
-- `/client` - Frontend React application
-- `/server` - Express backend
-- `/shared` - Shared TypeScript types and Zod schemas
-- Enables type safety across API boundaries
-
-**Type Safety Strategy:**
-- Zod schemas define runtime validation and TypeScript types
-- drizzle-zod bridges database schema to validation
-- Shared schema ensures client/server type consistency
-
-**API Response Handling:**
-- Custom apiRequest() wrapper with automatic error throwing for non-OK responses
-- Query client configured to NOT return null on 401 (throw instead)
-- Toast notifications for user feedback on mutations
-
-**Cost Tracking Design:**
-- Costs stored in cents to avoid floating-point arithmetic issues
-- Auto-generated travel costs flagged with isTravelAuto=true
-- Payment status workflow: planned → invoiced → paid (or refunded)
-- Supports multiple cost types: entry, travel, hotel, tires, fuel, tolls, food, other
-
-**Performance Optimization:**
-- Weather caching reduces external API calls
-- React Query prevents redundant fetches with infinite stale time
-- Minimal re-renders through proper query key structure
-- Skeleton loaders for progressive rendering during data fetch
-
-**Responsive Design:**
-- Mobile-first approach with collapsible sidebar
-- Breakpoint-aware grid layouts (1 col mobile, 2-4 cols desktop)
-- Touch-friendly button sizes and spacing
-- Sticky header with backdrop blur on scroll
+### Date Handling
+- `date-fns` for formatting and operations.

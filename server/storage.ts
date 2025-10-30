@@ -15,6 +15,13 @@ import type {
   Settings, InsertSettings,
   WeatherCache,
   User, UpsertUser,
+  MaintenancePlan, InsertMaintenancePlan,
+  PlanChecklistItem, InsertPlanChecklistItem,
+  ChecklistItemPart, InsertChecklistItemPart,
+  VehiclePlan, InsertVehiclePlan,
+  MaintenanceTask, InsertMaintenanceTask,
+  TaskEvent, InsertTaskEvent,
+  NotificationPreferences, InsertNotificationPreferences,
 } from "@shared/schema";
 import {
   organizers,
@@ -29,6 +36,13 @@ import {
   settings as settingsTable,
   weatherCache as weatherCacheTable,
   users,
+  maintenancePlans,
+  planChecklistItems,
+  checklistItemParts,
+  vehiclePlans,
+  maintenanceTasks,
+  taskEvents,
+  notificationPreferences,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -97,6 +111,49 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
   toggleUserAdmin(id: string, isAdmin: boolean): Promise<User>;
+
+  // Maintenance Plans
+  getMaintenancePlans(filters?: { isTemplate?: boolean; ownerUserId?: string }): Promise<MaintenancePlan[]>;
+  getMaintenancePlan(id: string): Promise<MaintenancePlan | undefined>;
+  createMaintenancePlan(data: InsertMaintenancePlan): Promise<MaintenancePlan>;
+  updateMaintenancePlan(id: string, data: Partial<InsertMaintenancePlan>): Promise<MaintenancePlan | undefined>;
+  deleteMaintenancePlan(id: string): Promise<boolean>;
+
+  // Plan Checklist Items
+  getPlanChecklistItems(planId: string): Promise<PlanChecklistItem[]>;
+  createPlanChecklistItem(data: InsertPlanChecklistItem): Promise<PlanChecklistItem>;
+  updatePlanChecklistItem(id: string, data: Partial<InsertPlanChecklistItem>): Promise<PlanChecklistItem | undefined>;
+  deletePlanChecklistItem(id: string): Promise<boolean>;
+
+  // Checklist Item Parts
+  getChecklistItemParts(checklistItemId: string): Promise<ChecklistItemPart[]>;
+  createChecklistItemPart(data: InsertChecklistItemPart): Promise<ChecklistItemPart>;
+  deleteChecklistItemPart(id: string): Promise<boolean>;
+
+  // Vehicle Plans
+  getVehiclePlans(filters?: { vehicleId?: string; status?: string }): Promise<VehiclePlan[]>;
+  getVehiclePlan(id: string): Promise<VehiclePlan | undefined>;
+  createVehiclePlan(data: InsertVehiclePlan): Promise<VehiclePlan>;
+  updateVehiclePlan(id: string, data: Partial<InsertVehiclePlan>): Promise<VehiclePlan | undefined>;
+  deleteVehiclePlan(id: string): Promise<boolean>;
+
+  // Maintenance Tasks
+  getMaintenanceTasks(filters?: { vehiclePlanId?: string; status?: string; vehicleId?: string }): Promise<MaintenanceTask[]>;
+  getMaintenanceTask(id: string): Promise<MaintenanceTask | undefined>;
+  createMaintenanceTask(data: InsertMaintenanceTask): Promise<MaintenanceTask>;
+  updateMaintenanceTask(id: string, data: Partial<MaintenanceTask>): Promise<MaintenanceTask | undefined>;
+  deleteMaintenanceTask(id: string): Promise<boolean>;
+  snoozeTask(id: string, snoozedUntil: Date): Promise<MaintenanceTask | undefined>;
+  completeTask(id: string, completionSource: string, maintenanceLogId?: string): Promise<MaintenanceTask | undefined>;
+  dismissTask(id: string): Promise<MaintenanceTask | undefined>;
+
+  // Task Events
+  createTaskEvent(data: InsertTaskEvent): Promise<TaskEvent>;
+  getTaskEvents(taskId: string): Promise<TaskEvent[]>;
+
+  // Notification Preferences
+  getNotificationPreferences(userId: string): Promise<NotificationPreferences | undefined>;
+  upsertNotificationPreferences(data: InsertNotificationPreferences): Promise<NotificationPreferences>;
 }
 
 export class MemStorage implements IStorage {
@@ -898,6 +955,257 @@ export class DbStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  // ========== MAINTENANCE PLANS ==========
+  async getMaintenancePlans(filters?: { isTemplate?: boolean; ownerUserId?: string }): Promise<MaintenancePlan[]> {
+    await this.ensureInitialized();
+    let query = this.db.select().from(maintenancePlans);
+    
+    if (filters?.isTemplate !== undefined) {
+      query = query.where(eq(maintenancePlans.isTemplate, filters.isTemplate)) as any;
+    }
+    if (filters?.ownerUserId) {
+      query = query.where(eq(maintenancePlans.ownerUserId, filters.ownerUserId)) as any;
+    }
+    
+    return (await query) as MaintenancePlan[];
+  }
+
+  async getMaintenancePlan(id: string): Promise<MaintenancePlan | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(maintenancePlans).where(eq(maintenancePlans.id, id));
+    return result[0] as MaintenancePlan | undefined;
+  }
+
+  async createMaintenancePlan(data: InsertMaintenancePlan): Promise<MaintenancePlan> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(maintenancePlans).values(data).returning();
+    return result[0] as MaintenancePlan;
+  }
+
+  async updateMaintenancePlan(id: string, data: Partial<InsertMaintenancePlan>): Promise<MaintenancePlan | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .update(maintenancePlans)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(maintenancePlans.id, id))
+      .returning();
+    return result[0] as MaintenancePlan | undefined;
+  }
+
+  async deleteMaintenancePlan(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(maintenancePlans).where(eq(maintenancePlans.id, id));
+    return (result as any).rowCount > 0;
+  }
+
+  // ========== PLAN CHECKLIST ITEMS ==========
+  async getPlanChecklistItems(planId: string): Promise<PlanChecklistItem[]> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(planChecklistItems).where(eq(planChecklistItems.planId, planId));
+    return result.sort((a, b) => a.sequence - b.sequence) as PlanChecklistItem[];
+  }
+
+  async createPlanChecklistItem(data: InsertPlanChecklistItem): Promise<PlanChecklistItem> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(planChecklistItems).values(data).returning();
+    return result[0] as PlanChecklistItem;
+  }
+
+  async updatePlanChecklistItem(id: string, data: Partial<InsertPlanChecklistItem>): Promise<PlanChecklistItem | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .update(planChecklistItems)
+      .set(data)
+      .where(eq(planChecklistItems.id, id))
+      .returning();
+    return result[0] as PlanChecklistItem | undefined;
+  }
+
+  async deletePlanChecklistItem(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(planChecklistItems).where(eq(planChecklistItems.id, id));
+    return (result as any).rowCount > 0;
+  }
+
+  // ========== CHECKLIST ITEM PARTS ==========
+  async getChecklistItemParts(checklistItemId: string): Promise<ChecklistItemPart[]> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(checklistItemParts).where(eq(checklistItemParts.checklistItemId, checklistItemId));
+    return result as ChecklistItemPart[];
+  }
+
+  async createChecklistItemPart(data: InsertChecklistItemPart): Promise<ChecklistItemPart> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(checklistItemParts).values(data).returning();
+    return result[0] as ChecklistItemPart;
+  }
+
+  async deleteChecklistItemPart(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(checklistItemParts).where(eq(checklistItemParts.id, id));
+    return (result as any).rowCount > 0;
+  }
+
+  // ========== VEHICLE PLANS ==========
+  async getVehiclePlans(filters?: { vehicleId?: string; status?: string }): Promise<VehiclePlan[]> {
+    await this.ensureInitialized();
+    let query = this.db.select().from(vehiclePlans);
+    
+    if (filters?.vehicleId) {
+      query = query.where(eq(vehiclePlans.vehicleId, filters.vehicleId)) as any;
+    }
+    if (filters?.status) {
+      query = query.where(eq(vehiclePlans.status, filters.status)) as any;
+    }
+    
+    return (await query) as VehiclePlan[];
+  }
+
+  async getVehiclePlan(id: string): Promise<VehiclePlan | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(vehiclePlans).where(eq(vehiclePlans.id, id));
+    return result[0] as VehiclePlan | undefined;
+  }
+
+  async createVehiclePlan(data: InsertVehiclePlan): Promise<VehiclePlan> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(vehiclePlans).values(data).returning();
+    return result[0] as VehiclePlan;
+  }
+
+  async updateVehiclePlan(id: string, data: Partial<InsertVehiclePlan>): Promise<VehiclePlan | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .update(vehiclePlans)
+      .set(data)
+      .where(eq(vehiclePlans.id, id))
+      .returning();
+    return result[0] as VehiclePlan | undefined;
+  }
+
+  async deleteVehiclePlan(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(vehiclePlans).where(eq(vehiclePlans.id, id));
+    return (result as any).rowCount > 0;
+  }
+
+  // ========== MAINTENANCE TASKS ==========
+  async getMaintenanceTasks(filters?: { vehiclePlanId?: string; status?: string; vehicleId?: string }): Promise<MaintenanceTask[]> {
+    await this.ensureInitialized();
+    let query = this.db.select().from(maintenanceTasks);
+    
+    if (filters?.vehiclePlanId) {
+      query = query.where(eq(maintenanceTasks.vehiclePlanId, filters.vehiclePlanId)) as any;
+    }
+    if (filters?.status) {
+      query = query.where(eq(maintenanceTasks.status, filters.status)) as any;
+    }
+    
+    return (await query).sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()) as MaintenanceTask[];
+  }
+
+  async getMaintenanceTask(id: string): Promise<MaintenanceTask | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(maintenanceTasks).where(eq(maintenanceTasks.id, id));
+    return result[0] as MaintenanceTask | undefined;
+  }
+
+  async createMaintenanceTask(data: InsertMaintenanceTask): Promise<MaintenanceTask> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(maintenanceTasks).values(data).returning();
+    return result[0] as MaintenanceTask;
+  }
+
+  async updateMaintenanceTask(id: string, data: Partial<MaintenanceTask>): Promise<MaintenanceTask | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .update(maintenanceTasks)
+      .set(data)
+      .where(eq(maintenanceTasks.id, id))
+      .returning();
+    return result[0] as MaintenanceTask | undefined;
+  }
+
+  async deleteMaintenanceTask(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(maintenanceTasks).where(eq(maintenanceTasks.id, id));
+    return (result as any).rowCount > 0;
+  }
+
+  async snoozeTask(id: string, snoozedUntil: Date): Promise<MaintenanceTask | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .update(maintenanceTasks)
+      .set({ 
+        status: "snoozed",
+        snoozedUntil,
+      })
+      .where(eq(maintenanceTasks.id, id))
+      .returning();
+    return result[0] as MaintenanceTask | undefined;
+  }
+
+  async completeTask(id: string, completionSource: string, maintenanceLogId?: string): Promise<MaintenanceTask | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .update(maintenanceTasks)
+      .set({ 
+        status: "completed",
+        completedAt: new Date(),
+        completionSource,
+        maintenanceLogId,
+      })
+      .where(eq(maintenanceTasks.id, id))
+      .returning();
+    return result[0] as MaintenanceTask | undefined;
+  }
+
+  async dismissTask(id: string): Promise<MaintenanceTask | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .update(maintenanceTasks)
+      .set({ 
+        status: "dismissed",
+        dismissedAt: new Date(),
+      })
+      .where(eq(maintenanceTasks.id, id))
+      .returning();
+    return result[0] as MaintenanceTask | undefined;
+  }
+
+  // ========== TASK EVENTS ==========
+  async createTaskEvent(data: InsertTaskEvent): Promise<TaskEvent> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(taskEvents).values(data).returning();
+    return result[0] as TaskEvent;
+  }
+
+  async getTaskEvents(taskId: string): Promise<TaskEvent[]> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(taskEvents).where(eq(taskEvents.taskId, taskId));
+    return result.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()) as TaskEvent[];
+  }
+
+  // ========== NOTIFICATION PREFERENCES ==========
+  async getNotificationPreferences(userId: string): Promise<NotificationPreferences | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId));
+    return result[0] as NotificationPreferences | undefined;
+  }
+
+  async upsertNotificationPreferences(data: InsertNotificationPreferences): Promise<NotificationPreferences> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .insert(notificationPreferences)
+      .values(data)
+      .onConflictDoUpdate({
+        target: notificationPreferences.userId,
+        set: data,
+      })
+      .returning();
+    return result[0] as NotificationPreferences;
   }
 }
 

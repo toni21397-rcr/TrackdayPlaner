@@ -15,6 +15,13 @@ import {
   insertTrackSessionSchema,
   insertLapSchema,
   insertSettingsSchema,
+  insertMaintenancePlanSchema,
+  insertPlanChecklistItemSchema,
+  insertChecklistItemPartSchema,
+  insertVehiclePlanSchema,
+  insertMaintenanceTaskSchema,
+  insertTaskEventSchema,
+  insertNotificationPreferencesSchema,
   type BudgetSummary,
   type DashboardStats,
   type MonthlySpending,
@@ -716,6 +723,409 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ MAINTENANCE PLANS ============
+  app.get("/api/maintenance-plans", isAuthenticated, async (req: any, res) => {
+    try {
+      const isTemplate = req.query.isTemplate === 'true';
+      const userId = req.user.claims.sub;
+      const plans = await storage.getMaintenancePlans({ isTemplate, ownerUserId: userId });
+      res.json(plans);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/maintenance-plans/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const plan = await storage.getMaintenancePlan(req.params.id);
+      if (!plan) return res.status(404).json({ error: "Maintenance plan not found" });
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, plan.ownerUserId || "", user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to view this plan" });
+      }
+      
+      res.json(plan);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/maintenance-plans", isAuthenticated, async (req: any, res) => {
+    try {
+      const data = insertMaintenancePlanSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const plan = await storage.createMaintenancePlan({ ...data, ownerUserId: userId });
+      res.json(plan);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/maintenance-plans/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const plan = await storage.getMaintenancePlan(req.params.id);
+      if (!plan) return res.status(404).json({ error: "Maintenance plan not found" });
+      
+      const userId = req.user.claims.sub;
+      if (plan.ownerUserId !== userId) {
+        return res.status(403).json({ error: "You don't have permission to modify this plan" });
+      }
+      
+      const data = insertMaintenancePlanSchema.partial().parse(req.body);
+      const updated = await storage.updateMaintenancePlan(req.params.id, data);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/maintenance-plans/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const plan = await storage.getMaintenancePlan(req.params.id);
+      if (!plan) return res.status(404).json({ error: "Maintenance plan not found" });
+      
+      const userId = req.user.claims.sub;
+      if (plan.ownerUserId !== userId) {
+        return res.status(403).json({ error: "You don't have permission to delete this plan" });
+      }
+      
+      await storage.deleteMaintenancePlan(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ PLAN CHECKLIST ITEMS ============
+  app.get("/api/maintenance-plans/:planId/checklist-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const plan = await storage.getMaintenancePlan(req.params.planId);
+      if (!plan) return res.status(404).json({ error: "Maintenance plan not found" });
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, plan.ownerUserId || "", user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to view this plan's items" });
+      }
+      
+      const items = await storage.getPlanChecklistItems(req.params.planId);
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/maintenance-plans/:planId/checklist-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const plan = await storage.getMaintenancePlan(req.params.planId);
+      if (!plan) return res.status(404).json({ error: "Maintenance plan not found" });
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, plan.ownerUserId || "", user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to modify this plan" });
+      }
+      
+      const data = insertPlanChecklistItemSchema.parse({ ...req.body, planId: req.params.planId });
+      const item = await storage.createPlanChecklistItem(data);
+      res.json(item);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/checklist-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const item = await storage.getPlanChecklistItems("").then(items => items.find(i => i.id === req.params.id));
+      if (!item) return res.status(404).json({ error: "Checklist item not found" });
+      
+      const plan = await storage.getMaintenancePlan(item.planId);
+      if (!plan) return res.status(404).json({ error: "Maintenance plan not found" });
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, plan.ownerUserId || "", user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to modify this item" });
+      }
+      
+      const data = insertPlanChecklistItemSchema.partial().parse(req.body);
+      const updated = await storage.updatePlanChecklistItem(req.params.id, data);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/checklist-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const item = await storage.getPlanChecklistItems("").then(items => items.find(i => i.id === req.params.id));
+      if (!item) return res.status(404).json({ error: "Checklist item not found" });
+      
+      const plan = await storage.getMaintenancePlan(item.planId);
+      if (!plan) return res.status(404).json({ error: "Maintenance plan not found" });
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, plan.ownerUserId || "", user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to delete this item" });
+      }
+      
+      await storage.deletePlanChecklistItem(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ CHECKLIST ITEM PARTS ============
+  app.get("/api/checklist-items/:checklistItemId/parts", isAuthenticated, async (req, res) => {
+    try {
+      const parts = await storage.getChecklistItemParts(req.params.checklistItemId);
+      res.json(parts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/checklist-items/:checklistItemId/parts", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertChecklistItemPartSchema.parse({ ...req.body, checklistItemId: req.params.checklistItemId });
+      const part = await storage.createChecklistItemPart(data);
+      res.json(part);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/parts/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteChecklistItemPart(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ VEHICLE PLANS ============
+  app.get("/api/vehicle-plans", isAuthenticated, async (req, res) => {
+    try {
+      const { vehicleId, status } = req.query;
+      const plans = await storage.getVehiclePlans({ 
+        vehicleId: vehicleId as string,
+        status: status as string 
+      });
+      res.json(plans);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/vehicle-plans/:id", isAuthenticated, async (req, res) => {
+    try {
+      const plan = await storage.getVehiclePlan(req.params.id);
+      if (!plan) return res.status(404).json({ error: "Vehicle plan not found" });
+      res.json(plan);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/vehicle-plans", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertVehiclePlanSchema.parse(req.body);
+      const plan = await storage.createVehiclePlan(data);
+      res.json(plan);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/vehicle-plans/:id", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertVehiclePlanSchema.partial().parse(req.body);
+      const updated = await storage.updateVehiclePlan(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Vehicle plan not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/vehicle-plans/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteVehiclePlan(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ MAINTENANCE TASKS ============
+  app.get("/api/maintenance-tasks", isAuthenticated, async (req, res) => {
+    try {
+      const { vehiclePlanId, status, vehicleId } = req.query;
+      const tasks = await storage.getMaintenanceTasks({ 
+        vehiclePlanId: vehiclePlanId as string,
+        status: status as string,
+        vehicleId: vehicleId as string
+      });
+      res.json(tasks);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/maintenance-tasks/:id", isAuthenticated, async (req, res) => {
+    try {
+      const task = await storage.getMaintenanceTask(req.params.id);
+      if (!task) return res.status(404).json({ error: "Maintenance task not found" });
+      res.json(task);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/maintenance-tasks", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertMaintenanceTaskSchema.parse(req.body);
+      const task = await storage.createMaintenanceTask(data);
+      res.json(task);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/maintenance-tasks/:id", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = insertMaintenanceTaskSchema.partial().parse(req.body);
+      const data: Partial<any> = { ...parsed };
+      if (parsed.dueAt && typeof parsed.dueAt === 'string') {
+        data.dueAt = new Date(parsed.dueAt);
+      }
+      const updated = await storage.updateMaintenanceTask(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Maintenance task not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/maintenance-tasks/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteMaintenanceTask(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Task lifecycle actions
+  app.post("/api/maintenance-tasks/:id/snooze", isAuthenticated, async (req, res) => {
+    try {
+      const { snoozedUntil } = req.body;
+      if (!snoozedUntil) {
+        return res.status(400).json({ error: "snoozedUntil is required" });
+      }
+      const updated = await storage.snoozeTask(req.params.id, new Date(snoozedUntil));
+      if (!updated) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      await storage.createTaskEvent({
+        taskId: req.params.id,
+        type: "status_change",
+        occurredAt: new Date(),
+        payload: { newStatus: "snoozed", snoozedUntil },
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/maintenance-tasks/:id/complete", isAuthenticated, async (req, res) => {
+    try {
+      const { completionSource, maintenanceLogId } = req.body;
+      if (!completionSource) {
+        return res.status(400).json({ error: "completionSource is required" });
+      }
+      const updated = await storage.completeTask(req.params.id, completionSource, maintenanceLogId);
+      if (!updated) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      await storage.createTaskEvent({
+        taskId: req.params.id,
+        type: "status_change",
+        occurredAt: new Date(),
+        payload: { newStatus: "completed", completionSource, maintenanceLogId },
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/maintenance-tasks/:id/dismiss", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.dismissTask(req.params.id);
+      if (!updated) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      await storage.createTaskEvent({
+        taskId: req.params.id,
+        type: "status_change",
+        occurredAt: new Date(),
+        payload: { newStatus: "dismissed" },
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ============ TASK EVENTS ============
+  app.get("/api/maintenance-tasks/:taskId/events", isAuthenticated, async (req, res) => {
+    try {
+      const events = await storage.getTaskEvents(req.params.taskId);
+      res.json(events);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ NOTIFICATION PREFERENCES ============
+  app.get("/api/notification-preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prefs = await storage.getNotificationPreferences(userId);
+      res.json(prefs || {
+        userId,
+        enableEmailNotifications: true,
+        notificationTimezone: 'UTC',
+        notificationHourUtc: 9,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/notification-preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertNotificationPreferencesSchema.parse({ ...req.body, userId });
+      const prefs = await storage.upsertNotificationPreferences(data);
+      res.json(prefs);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   });
 
