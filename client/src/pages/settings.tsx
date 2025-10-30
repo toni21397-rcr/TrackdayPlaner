@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -14,16 +14,42 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { insertSettingsSchema, type InsertSettings, type Settings } from "@shared/schema";
+import { insertSettingsSchema, type InsertSettings, type Settings, insertNotificationPreferencesSchema, type InsertNotificationPreferences, type NotificationPreferences } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+
+// Common timezones for the selector
+const TIMEZONES = [
+  { value: "UTC", label: "UTC" },
+  { value: "Europe/Zurich", label: "Europe/Zurich (CET)" },
+  { value: "Europe/London", label: "Europe/London (GMT)" },
+  { value: "Europe/Paris", label: "Europe/Paris (CET)" },
+  { value: "Europe/Berlin", label: "Europe/Berlin (CET)" },
+  { value: "America/New_York", label: "America/New_York (EST)" },
+  { value: "America/Los_Angeles", label: "America/Los_Angeles (PST)" },
+  { value: "Asia/Tokyo", label: "Asia/Tokyo (JST)" },
+];
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: settings, isLoading } = useQuery<Settings>({
     queryKey: ["/api/settings"],
+  });
+
+  const { data: notificationPrefs, isLoading: notificationPrefsLoading } = useQuery<NotificationPreferences>({
+    queryKey: ["/api/notification-preferences"],
   });
 
   const form = useForm<InsertSettings>({
@@ -37,6 +63,17 @@ export default function SettingsPage() {
       annualBudgetCents: 500000,
       openRouteServiceKey: "",
       openWeatherApiKey: "",
+    },
+  });
+
+  const notificationForm = useForm<InsertNotificationPreferences>({
+    resolver: zodResolver(insertNotificationPreferencesSchema),
+    defaultValues: {
+      userId: "",
+      emailEnabled: true,
+      inAppEnabled: true,
+      timezone: "UTC",
+      quietHours: {},
     },
   });
 
@@ -61,12 +98,43 @@ export default function SettingsPage() {
     },
   });
 
+  const notificationMutation = useMutation({
+    mutationFn: async (data: InsertNotificationPreferences) => {
+      const userId = user?.id;
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+      return apiRequest("POST", "/api/notification-preferences", { ...data, userId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notification-preferences"] });
+      toast({
+        title: "Notification preferences saved",
+        description: "Your notification preferences have been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save notification preferences. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Update form when settings load
   useEffect(() => {
     if (settings && !form.formState.isDirty) {
       form.reset(settings);
     }
   }, [settings, form]);
+
+  // Update notification form when preferences load
+  useEffect(() => {
+    if (notificationPrefs && !notificationForm.formState.isDirty) {
+      notificationForm.reset(notificationPrefs);
+    }
+  }, [notificationPrefs, notificationForm]);
 
   return (
     <div className="flex-1 overflow-auto">
@@ -324,6 +392,110 @@ export default function SettingsPage() {
               </div>
             </form>
           </Form>
+        )}
+
+        {notificationPrefsLoading ? (
+          <Card>
+            <CardContent className="p-6">
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Maintenance Notifications</CardTitle>
+              <CardDescription>
+                Configure how you receive maintenance reminders and alerts
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...notificationForm}>
+                <form onSubmit={notificationForm.handleSubmit((data) => notificationMutation.mutate(data))} className="space-y-6">
+                  <FormField
+                    control={notificationForm.control}
+                    name="emailEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Email Notifications</FormLabel>
+                          <FormDescription>
+                            Receive email reminders when maintenance tasks are due
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-email-notifications"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={notificationForm.control}
+                    name="inAppEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">In-App Nudges</FormLabel>
+                          <FormDescription>
+                            Show due tasks when logging maintenance in the app
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-in-app-notifications"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={notificationForm.control}
+                    name="timezone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Timezone</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-timezone">
+                              <SelectValue placeholder="Select a timezone" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {TIMEZONES.map((tz) => (
+                              <SelectItem key={tz.value} value={tz.value}>
+                                {tz.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Notifications will be sent based on this timezone
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      disabled={notificationMutation.isPending}
+                      data-testid="button-save-notification-preferences"
+                    >
+                      {notificationMutation.isPending ? "Saving..." : "Save Notification Preferences"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
