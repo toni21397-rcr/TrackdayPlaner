@@ -22,6 +22,7 @@ import type {
   MaintenanceTask, InsertMaintenanceTask,
   TaskEvent, InsertTaskEvent,
   NotificationPreferences, InsertNotificationPreferences,
+  MotorcycleModel, InsertMotorcycleModel,
 } from "@shared/schema";
 import {
   organizers,
@@ -43,6 +44,7 @@ import {
   maintenanceTasks,
   taskEvents,
   notificationPreferences,
+  motorcycleModels,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -156,6 +158,18 @@ export interface IStorage {
   // Notification Preferences
   getNotificationPreferences(userId: string): Promise<NotificationPreferences | undefined>;
   upsertNotificationPreferences(data: InsertNotificationPreferences): Promise<NotificationPreferences>;
+
+  // Motorcycle Models
+  getMotorcycleModels(filters?: { isActive?: boolean }): Promise<MotorcycleModel[]>;
+  getMotorcycleModel(id: string): Promise<MotorcycleModel | undefined>;
+  createMotorcycleModel(data: InsertMotorcycleModel): Promise<MotorcycleModel>;
+  updateMotorcycleModel(id: string, data: Partial<InsertMotorcycleModel>): Promise<MotorcycleModel | undefined>;
+  deleteMotorcycleModel(id: string): Promise<boolean>;
+
+  // Bulk operations for admin data management
+  bulkReplaceMotorcycleModels(models: InsertMotorcycleModel[]): Promise<void>;
+  bulkReplaceTracks(tracks: InsertTrack[]): Promise<void>;
+  bulkReplaceOrganizers(organizers: InsertOrganizer[]): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -1246,6 +1260,88 @@ export class DbStorage implements IStorage {
       })
       .returning();
     return result[0] as NotificationPreferences;
+  }
+
+  async getMotorcycleModels(filters?: { isActive?: boolean }): Promise<MotorcycleModel[]> {
+    await this.ensureInitialized();
+    const query = this.db.select().from(motorcycleModels);
+    
+    if (filters?.isActive !== undefined) {
+      const result = await query.where(eq(motorcycleModels.isActive, filters.isActive));
+      return result as MotorcycleModel[];
+    }
+    
+    const result = await query.orderBy(motorcycleModels.displayOrder, motorcycleModels.name);
+    return result as MotorcycleModel[];
+  }
+
+  async getMotorcycleModel(id: string): Promise<MotorcycleModel | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .select()
+      .from(motorcycleModels)
+      .where(eq(motorcycleModels.id, id));
+    return result[0] as MotorcycleModel | undefined;
+  }
+
+  async createMotorcycleModel(data: InsertMotorcycleModel): Promise<MotorcycleModel> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .insert(motorcycleModels)
+      .values(data)
+      .returning();
+    return result[0] as MotorcycleModel;
+  }
+
+  async updateMotorcycleModel(id: string, data: Partial<InsertMotorcycleModel>): Promise<MotorcycleModel | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .update(motorcycleModels)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(motorcycleModels.id, id))
+      .returning();
+    return result[0] as MotorcycleModel | undefined;
+  }
+
+  async deleteMotorcycleModel(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .delete(motorcycleModels)
+      .where(eq(motorcycleModels.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async bulkReplaceMotorcycleModels(models: InsertMotorcycleModel[]): Promise<void> {
+    await this.ensureInitialized();
+    await this.db.transaction(async (tx) => {
+      await tx.delete(motorcycleModels);
+      
+      if (models.length > 0) {
+        await tx.insert(motorcycleModels).values(models);
+      }
+    });
+  }
+
+  async bulkReplaceTracks(tracksData: InsertTrack[]): Promise<void> {
+    await this.ensureInitialized();
+    await this.db.transaction(async (tx) => {
+      await tx.delete(tracks);
+      
+      if (tracksData.length > 0) {
+        await tx.insert(tracks).values(tracksData);
+      }
+    });
+  }
+
+  async bulkReplaceOrganizers(organizersData: InsertOrganizer[]): Promise<void> {
+    await this.ensureInitialized();
+    await this.db.transaction(async (tx) => {
+      await tx.delete(organizers);
+      
+      if (organizersData.length > 0) {
+        await tx.insert(organizers).values(organizersData);
+      }
+    });
   }
 }
 
