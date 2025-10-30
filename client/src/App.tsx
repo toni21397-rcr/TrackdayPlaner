@@ -18,6 +18,8 @@ import SettingsPage from "@/pages/settings";
 import Booking from "@/pages/booking";
 import BookingDetail from "@/pages/booking-detail";
 import Organizers from "@/pages/organizers";
+import AdminDashboard from "@/pages/admin-dashboard";
+import AdminUsers from "@/pages/admin-users";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -33,6 +35,10 @@ function Router() {
       <Route path="/booking/:trackId" component={BookingDetail} />
       <Route path="/map" component={MapPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/users" component={AdminUsers} />
+      <Route path="/admin/tracks" component={Tracks} />
+      <Route path="/admin/organizers" component={Organizers} />
       <Route component={NotFound} />
     </Switch>
   );

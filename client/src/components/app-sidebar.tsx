@@ -7,6 +7,7 @@ import {
   Settings as SettingsIcon,
   ShoppingCart,
   Building2,
+  Shield,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -20,6 +21,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/useAuth";
 
 const menuItems = [
   {
@@ -64,8 +66,23 @@ const menuItems = [
   },
 ];
 
+const adminMenuItems = [
+  {
+    title: "Admin Dashboard",
+    url: "/admin",
+    icon: Shield,
+  },
+  {
+    title: "Manage Users",
+    url: "/admin/users",
+    icon: Shield,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin || false;
 
   return (
     <Sidebar>
@@ -98,6 +115,25 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={location === item.url}>
+                      <Link href={item.url} data-testid={`link-admin-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );
