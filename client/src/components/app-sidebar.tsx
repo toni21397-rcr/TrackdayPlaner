@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Building2,
   Shield,
+  ChevronDown,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -20,25 +21,46 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
-const menuItems = [
+const mainMenuItems = [
   {
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
   },
   {
-    title: "Trackdays",
+    title: "Trackday Bookings",
+    url: "/booking",
+    icon: ShoppingCart,
+  },
+  {
+    title: "My Trackdays",
     url: "/trackdays",
     icon: Calendar,
   },
   {
-    title: "Booking",
-    url: "/booking",
-    icon: ShoppingCart,
+    title: "My Bike",
+    url: "/vehicles",
+    icon: Car,
   },
+  {
+    title: "My Map",
+    url: "/map",
+    icon: Map,
+  },
+];
+
+const optionsMenuItems = [
   {
     title: "Tracks",
     url: "/tracks",
@@ -48,21 +70,6 @@ const menuItems = [
     title: "Organizers",
     url: "/organizers",
     icon: Building2,
-  },
-  {
-    title: "Vehicles",
-    url: "/vehicles",
-    icon: Car,
-  },
-  {
-    title: "Map",
-    url: "/map",
-    icon: Map,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: SettingsIcon,
   },
 ];
 
@@ -102,7 +109,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={location === item.url}>
                     <Link href={item.url} data-testid={`link-nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -112,6 +119,41 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              
+              <Collapsible asChild defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton data-testid="button-options-toggle">
+                      <SettingsIcon className="w-4 h-4" />
+                      <span>Options</span>
+                      <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180 w-4 h-4" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {optionsMenuItems.map((item) => (
+                        <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubButton asChild isActive={location === item.url}>
+                            <Link href={item.url} data-testid={`link-options-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                              <item.icon className="w-4 h-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/settings"}>
+                  <Link href="/settings" data-testid="link-nav-settings">
+                    <SettingsIcon className="w-4 h-4" />
+                    <span>Settings</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
