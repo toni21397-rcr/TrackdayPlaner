@@ -108,6 +108,7 @@ export default function AdminDataManagement() {
       
       queryClient.invalidateQueries({ queryKey: ["/api/tracks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/organizers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/motorcycle-models"] });
     },
     onError: (error: any, { entity }) => {
       toast({
