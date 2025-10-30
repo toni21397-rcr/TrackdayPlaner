@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, ListChecks } from "lucide-react";
+import { Plus, Edit, Trash2, ListChecks, ChevronRight } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -198,51 +199,62 @@ function PlanCard({
 }) {
   return (
     <Card className="hover-elevate" data-testid={`card-plan-${plan.id}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg" data-testid={`text-plan-name-${plan.id}`}>
-              {plan.name}
-            </CardTitle>
-            <CardDescription className="mt-1">
-              {plan.cadenceType === "trackday" && (
-                <Badge variant="secondary">
-                  Every {plan.cadenceConfig.trackday?.afterEveryN || 1} trackday{(plan.cadenceConfig.trackday?.afterEveryN || 1) > 1 ? 's' : ''}
+      <Link href={`/maintenance-plans/${plan.id}`}>
+        <a className="block" data-testid={`link-plan-detail-${plan.id}`}>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <CardTitle className="text-lg flex items-center gap-2" data-testid={`text-plan-name-${plan.id}`}>
+                  {plan.name}
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  {plan.cadenceType === "trackday" && (
+                    <Badge variant="secondary">
+                      Every {plan.cadenceConfig.trackday?.afterEveryN || 1} trackday{(plan.cadenceConfig.trackday?.afterEveryN || 1) > 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                  {plan.cadenceType === "time_interval" && (
+                    <Badge variant="secondary">
+                      Every {plan.cadenceConfig.time_interval?.intervalDays} days
+                    </Badge>
+                  )}
+                  {plan.cadenceType === "odometer" && (
+                    <Badge variant="secondary">
+                      Every {plan.cadenceConfig.odometer?.intervalKm} km
+                    </Badge>
+                  )}
+                  {plan.cadenceType === "engine_hours" && (
+                    <Badge variant="secondary">
+                      Every {plan.cadenceConfig.engine_hours?.intervalHours} hours
+                    </Badge>
+                  )}
+                </CardDescription>
+              </div>
+              {plan.isTemplate && (
+                <Badge variant="outline" className="ml-2">
+                  Template
                 </Badge>
               )}
-              {plan.cadenceType === "time_interval" && (
-                <Badge variant="secondary">
-                  Every {plan.cadenceConfig.time_interval?.intervalDays} days
-                </Badge>
-              )}
-              {plan.cadenceType === "odometer" && (
-                <Badge variant="secondary">
-                  Every {plan.cadenceConfig.odometer?.intervalKm} km
-                </Badge>
-              )}
-              {plan.cadenceType === "engine_hours" && (
-                <Badge variant="secondary">
-                  Every {plan.cadenceConfig.engine_hours?.intervalHours} hours
-                </Badge>
-              )}
-            </CardDescription>
-          </div>
-          {plan.isTemplate && (
-            <Badge variant="outline" className="ml-2">
-              Template
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-          {plan.description || "No description"}
-        </p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+              {plan.description || "No description"}
+            </p>
+          </CardContent>
+        </a>
+      </Link>
+      <CardContent className="pt-0">
         <div className="flex gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={onEdit}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onEdit();
+            }}
             data-testid={`button-edit-plan-${plan.id}`}
           >
             <Edit className="w-3 h-3" />
@@ -251,7 +263,11 @@ function PlanCard({
           <Button
             variant="outline"
             size="sm"
-            onClick={onDelete}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete();
+            }}
             data-testid={`button-delete-plan-${plan.id}`}
           >
             <Trash2 className="w-3 h-3" />
