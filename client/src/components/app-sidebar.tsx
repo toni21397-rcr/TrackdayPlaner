@@ -10,6 +10,7 @@ import {
   Shield,
   ChevronDown,
   ListChecks,
+  ClipboardCheck,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -58,6 +59,11 @@ const mainMenuItems = [
     title: "Maintenance Plans",
     url: "/maintenance-plans",
     icon: ListChecks,
+  },
+  {
+    title: "Maintenance Tasks",
+    url: "/maintenance-tasks",
+    icon: ClipboardCheck,
   },
   {
     title: "My Map",
