@@ -430,6 +430,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  // ============ MOTORCYCLE MODELS ============
+  app.get("/api/motorcycle-models", async (req, res) => {
+    const isActiveFilter = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+    const models = await storage.getMotorcycleModels(isActiveFilter !== undefined ? { isActive: isActiveFilter } : undefined);
+    res.json(models);
+  });
+
   // ============ MAINTENANCE LOGS ============
   app.post("/api/maintenance", isAuthenticated, async (req, res) => {
     try {

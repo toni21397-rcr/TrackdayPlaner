@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUpDown } from "lucide-react";
 import {
   Dialog,
@@ -51,35 +51,6 @@ interface VehicleDialogProps {
   vehicle?: any;
 }
 
-// Predefined motorcycle models
-const MOTORCYCLE_MODELS = [
-  "Yamaha YZF-R1", "BMW S1000RR", "Honda CBR1000RR Fireblade", "Kawasaki ZX-10R",
-  "Suzuki GSX-R1000", "Ducati 998", "Ducati 999", "Ducati 1098", "Ducati 1198",
-  "Ducati Panigale V2", "Ducati Panigale V4", "Aprilia RSV Mille", "Aprilia RSV4",
-  "KTM RC8", "MV Agusta F4", "Triumph Speed Triple 1050", "Yamaha FZR1000 EXUP",
-  "Honda CBR900RR Fireblade", "Suzuki GSX-R1100", "Kawasaki ZX-9R", "Ducati 851",
-  "Ducati 888", "Honda VTR1000 SP-1", "Suzuki TL1000R", "Yamaha YZF1000R Thunderace",
-  "Aprilia RSV1000R", "BMW K1200S", "Moto Guzzi Daytona RS", "Yamaha YZF-R6",
-  "Honda CBR600RR", "Kawasaki ZX-6R", "Suzuki GSX-R600", "Triumph Daytona 675",
-  "MV Agusta F3 675", "MV Agusta F3 800", "Ducati 748", "Ducati 749", "Ducati 848",
-  "Ducati 899", "Ducati 959", "Yamaha YZF600R Thundercat", "Honda CBR600F",
-  "Suzuki GSX-R750", "Kawasaki ZX-7R", "Yamaha FZ6", "Aprilia RS 660",
-  "Honda VFR750R RC30", "Ducati 916", "Ducati 996", "Suzuki SV650",
-  "KTM 690 Duke R", "Aprilia Falco SL1000", "Honda VFR800", "Yamaha R3",
-  "Kawasaki Ninja 400", "KTM RC 390", "Honda CBR500R", "Suzuki GS500F",
-  "Aprilia RS 250", "Honda NSR250", "Yamaha TZR250", "Suzuki RGV250",
-  "Kawasaki KR1-S", "Yamaha RD350LC", "Honda VFR400R NC30", "Suzuki Bandit 400",
-  "Cagiva Mito 125", "Aprilia RS125", "Triumph Street Triple 765 RS", "KTM 790 Duke R",
-  "KTM 890 Duke R", "Yamaha MT-09 SP", "Aprilia Tuono 660", "Aprilia Tuono V4",
-  "Ducati Streetfighter 848", "Ducati Streetfighter V2", "Ducati Streetfighter V4",
-  "Kawasaki Z900", "Suzuki GSX-S1000", "Honda CB1000R", "Honda CB650R",
-  "BMW R nineT Racer", "Buell XB12R Firebolt", "Suzuki Katana 1100", "Honda VF1000R",
-  "Yamaha FJ1100", "Yamaha FJ1200", "Kawasaki GPZ900R", "Suzuki RG500 Gamma",
-  "Yamaha TZ250", "Honda RC30", "Honda RC45", "Ducati Paso 750", "Bimota YB4",
-  "Bimota DB2", "Laverda 1000 RGS", "BMW R1100S Boxer Cup", "Honda VFR750F",
-  "Suzuki GSX-R750 Slingshot"
-];
-
 // Schema for client-side form (userId is injected by the backend)
 const vehicleFormSchema = insertVehicleSchema.omit({ userId: true });
 type VehicleFormData = Omit<InsertVehicle, 'userId'>;
@@ -88,7 +59,11 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
   const { toast } = useToast();
   const [modelSearchOpen, setModelSearchOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
-  const [customModel, setCustomModel] = useState("");
+
+  // Fetch motorcycle models from the database
+  const { data: motorcycleModelsData = [] } = useQuery<any[]>({
+    queryKey: ["/api/motorcycle-models"],
+  });
 
   const form = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleFormSchema),
@@ -111,8 +86,13 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
     onOpenChange(isOpen);
   };
 
+  // Get predefined model names
+  const predefinedModelNames = motorcycleModelsData
+    .filter((m: any) => m.isActive)
+    .map((m: any) => m.name);
+
   // Filter motorcycle models based on search
-  const filteredModels = MOTORCYCLE_MODELS.filter((model) => {
+  const filteredModels = predefinedModelNames.filter((model: string) => {
     if (!modelSearch) return true;
     return model.toLowerCase().includes(modelSearch.toLowerCase());
   });
@@ -143,7 +123,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
 
   // Determine what to show in the button
   const selectedValue = form.watch("name");
-  const isCustom = selectedValue && !MOTORCYCLE_MODELS.includes(selectedValue);
+  const isCustom = selectedValue && !predefinedModelNames.includes(selectedValue);
   
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
