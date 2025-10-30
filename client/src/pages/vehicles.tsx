@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, Car, ChevronDown, ChevronUp } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Plus, Car, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
@@ -10,15 +10,50 @@ import { Badge } from "@/components/ui/badge";
 import type { Vehicle, MaintenanceLog } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Vehicles() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [expandedVehicle, setExpandedVehicle] = useState<string | null>(null);
   const [maintenanceDialogVehicle, setMaintenanceDialogVehicle] = useState<string | null>(null);
+  const [deletingVehicle, setDeletingVehicle] = useState<Vehicle | null>(null);
+  const { toast } = useToast();
 
   const { data: vehicles, isLoading } = useQuery<Array<Vehicle & { maintenance?: MaintenanceLog[] }>>({
     queryKey: ["/api/vehicles"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/vehicles/${id}`, undefined);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
+      toast({
+        title: "Vehicle deleted",
+        description: "The vehicle has been successfully removed.",
+      });
+      setDeletingVehicle(null);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete vehicle. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const formatCurrency = (cents: number) => {
@@ -66,10 +101,6 @@ export default function Vehicles() {
                       <CardTitle className="text-xl">{vehicle.name}</CardTitle>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="secondary">{vehicle.type}</Badge>
-                        <Badge variant="outline">{vehicle.fuelType}</Badge>
-                        <span className="text-sm text-muted-foreground font-mono">
-                          {vehicle.consumptionPer100}L/100km
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -94,17 +125,27 @@ export default function Vehicles() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setExpandedVehicle(
-                        expandedVehicle === vehicle.id ? null : vehicle.id
-                      )}
-                      data-testid={`button-toggle-maintenance-${vehicle.id}`}
+                      onClick={() => setDeletingVehicle(vehicle)}
+                      data-testid={`button-delete-vehicle-${vehicle.id}`}
                     >
-                      {expandedVehicle === vehicle.id ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
+                      <Trash2 className="w-4 h-4" />
                     </Button>
+                    {vehicle.maintenance && vehicle.maintenance.length > 3 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setExpandedVehicle(
+                          expandedVehicle === vehicle.id ? null : vehicle.id
+                        )}
+                        data-testid={`button-toggle-maintenance-${vehicle.id}`}
+                      >
+                        {expandedVehicle === vehicle.id ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 {vehicle.notes && (
@@ -112,32 +153,80 @@ export default function Vehicles() {
                     <p className="text-sm text-muted-foreground">{vehicle.notes}</p>
                   </CardContent>
                 )}
-                {expandedVehicle === vehicle.id && vehicle.maintenance && vehicle.maintenance.length > 0 && (
+                
+                {/* Recent Maintenance (Last 3) - Always Visible */}
+                {vehicle.maintenance && vehicle.maintenance.length > 0 && (
                   <CardContent className="border-t pt-4">
-                    <h4 className="text-sm font-medium mb-3">Maintenance History</h4>
+                    <h4 className="text-sm font-medium mb-3">Recent Maintenance</h4>
                     <div className="space-y-2">
-                      {vehicle.maintenance.map((log) => (
+                      {vehicle.maintenance.slice(0, 3).map((log) => (
                         <div
                           key={log.id}
-                          className="flex items-center justify-between p-3 rounded-md bg-muted/50"
+                          className="p-3 rounded-md bg-muted/50"
+                          data-testid={`maintenance-${log.id}`}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="text-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 text-sm">
                               <div className="font-medium">{log.type.replace(/_/g, ' ')}</div>
                               <div className="text-muted-foreground">
                                 {format(new Date(log.date), "MMM dd, yyyy")}
                               </div>
+                              {log.notes && (
+                                <div className="text-muted-foreground mt-1">
+                                  {log.notes}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="font-mono font-semibold">
+                                {formatCurrency(log.costCents)}
+                              </div>
+                              {log.odometerKm && (
+                                <div className="text-xs text-muted-foreground">
+                                  {log.odometerKm.toLocaleString()} km
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="font-mono font-semibold">
-                              {formatCurrency(log.costCents)}
-                            </div>
-                            {log.odometerKm && (
-                              <div className="text-xs text-muted-foreground">
-                                {log.odometerKm.toLocaleString()} km
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
+                
+                {/* Older Maintenance - Expandable */}
+                {expandedVehicle === vehicle.id && vehicle.maintenance && vehicle.maintenance.length > 3 && (
+                  <CardContent className="border-t pt-4">
+                    <h4 className="text-sm font-medium mb-3">Older Maintenance</h4>
+                    <div className="space-y-2">
+                      {vehicle.maintenance.slice(3).map((log) => (
+                        <div
+                          key={log.id}
+                          className="p-3 rounded-md bg-muted/50"
+                          data-testid={`maintenance-${log.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 text-sm">
+                              <div className="font-medium">{log.type.replace(/_/g, ' ')}</div>
+                              <div className="text-muted-foreground">
+                                {format(new Date(log.date), "MMM dd, yyyy")}
                               </div>
-                            )}
+                              {log.notes && (
+                                <div className="text-muted-foreground mt-1">
+                                  {log.notes}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="font-mono font-semibold">
+                                {formatCurrency(log.costCents)}
+                              </div>
+                              {log.odometerKm && (
+                                <div className="text-xs text-muted-foreground">
+                                  {log.odometerKm.toLocaleString()} km
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -176,6 +265,27 @@ export default function Vehicles() {
           vehicleId={maintenanceDialogVehicle}
         />
       )}
+
+      <AlertDialog open={deletingVehicle !== null} onOpenChange={(open) => !open && setDeletingVehicle(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Vehicle</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {deletingVehicle?.name}? This action cannot be undone and will remove all associated maintenance records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingVehicle && deleteMutation.mutate(deletingVehicle.id)}
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
