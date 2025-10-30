@@ -38,13 +38,10 @@ export default function BookingDetail() {
     enabled: !!organizerId,
   });
 
-  // Fetch tracks associated with this organizer
+  // Fetch all tracks
   const { data: tracks } = useQuery<Track[]>({
     queryKey: ["/api/tracks"],
   });
-
-  // Filter tracks by organizer
-  const organizerTracks = tracks?.filter(track => track.organizerId === organizerId) || [];
 
   // Fetch vehicles
   const { data: vehicles } = useQuery<Vehicle[]>({
@@ -245,14 +242,14 @@ export default function BookingDetail() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {organizerTracks.length === 0 ? (
+                              {!tracks || tracks.length === 0 ? (
                                 <div className="p-2 text-sm text-muted-foreground">
-                                  No tracks for this organizer
+                                  No tracks available
                                 </div>
                               ) : (
-                                organizerTracks.map((track) => (
+                                tracks.map((track) => (
                                   <SelectItem key={track.id} value={track.id}>
-                                    {track.name}
+                                    {track.name} - {track.country}
                                   </SelectItem>
                                 ))
                               )}
