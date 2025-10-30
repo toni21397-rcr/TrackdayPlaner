@@ -1343,6 +1343,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ MAINTENANCE SCHEDULING ============
+  app.post("/api/maintenance/process-triggers", isAuthenticated, async (req: any, res) => {
+    try {
+      const { TriggerProcessor } = await import("./triggerProcessor.ts");
+      const processor = new TriggerProcessor(storage);
+      
+      await processor.processAllTriggers();
+      await processor.updateTaskStatuses();
+      
+      res.json({ success: true, message: "Trigger processing completed" });
+    } catch (error: any) {
+      console.error("Error processing triggers:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Send notification emails for due tasks
+  app.post("/api/maintenance/send-notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const { NotificationCoordinator } = await import("./notificationCoordinator.ts");
+      const { emailService } = await import("./emailService.ts");
+      
+      const coordinator = new NotificationCoordinator(storage, emailService);
+      await coordinator.sendDueTaskNotifications();
+      
+      res.json({ success: true, message: "Notifications sent successfully" });
+    } catch (error: any) {
+      console.error("Error sending notifications:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Handle email action links (complete/snooze/dismiss tasks from email)
+  app.get("/api/maintenance/email-action/:token", async (req, res) => {
+    try {
+      const { emailService } = await import("./emailService.ts");
+      const { token } = req.params;
+      
+      // Verify and decode the token
+      const decoded = emailService.verifyActionToken(token);
+      if (!decoded) {
+        return res.status(400).send(`
+          <html>
+            <body style="font-family: sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
+              <h1 style="color: #dc2626;">Invalid or Expired Link</h1>
+              <p>This action link is invalid or has expired. Please open the Trackday Planner app to manage your tasks.</p>
+              <a href="/" style="display: inline-block; margin-top: 20px; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">Open Trackday Planner</a>
+            </body>
+          </html>
+        `);
+      }
+
+      const { userId, taskId, action } = decoded;
+
+      // Verify user has permission to modify this task
+      const task = await storage.getMaintenanceTask(taskId);
+      if (!task) {
+        return res.status(404).send("Task not found");
+      }
+
+      const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
+      if (!vehiclePlan) {
+        return res.status(404).send("Vehicle plan not found");
+      }
+
+      const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+      if (!vehicle || vehicle.userId !== userId) {
+        return res.status(403).send("Unauthorized");
+      }
+
+      // Perform the action
+      let actionText = "";
+      switch (action) {
+        case "complete":
+          await storage.completeTask(taskId, "email");
+          actionText = "marked as complete";
+          break;
+        case "snooze":
+          const snoozeDate = new Date();
+          snoozeDate.setDate(snoozeDate.getDate() + 7);
+          await storage.snoozeTask(taskId, snoozeDate);
+          actionText = "snoozed for 7 days";
+          break;
+        case "dismiss":
+          await storage.dismissTask(taskId);
+          actionText = "dismissed";
+          break;
+        default:
+          return res.status(400).send("Invalid action");
+      }
+
+      // Create task event
+      await storage.createTaskEvent({
+        taskId,
+        type: "status_change",
+        occurredAt: new Date(),
+        payload: { source: "email", action },
+      });
+
+      // Return success page
+      res.send(`
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+          </head>
+          <body style="font-family: sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
+            <div style="background: #10b981; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+              <h1 style="margin: 0;">✓ Success</h1>
+            </div>
+            <p style="font-size: 18px;">Task ${actionText} successfully!</p>
+            <a href="/maintenance" style="display: inline-block; margin-top: 20px; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">View All Tasks</a>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error("Error handling email action:", error);
+      res.status(500).send("An error occurred processing your request");
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
