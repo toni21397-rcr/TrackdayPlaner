@@ -12,6 +12,7 @@ import {
   ListChecks,
   ClipboardCheck,
   BarChart3,
+  Wrench,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -57,24 +58,27 @@ const mainMenuItems = [
     icon: Car,
   },
   {
-    title: "Maintenance Plans",
+    title: "My Map",
+    url: "/map",
+    icon: Map,
+  },
+];
+
+const maintenanceMenuItems = [
+  {
+    title: "Plans",
     url: "/maintenance-plans",
     icon: ListChecks,
   },
   {
-    title: "Maintenance Tasks",
+    title: "Tasks",
     url: "/maintenance-tasks",
     icon: ClipboardCheck,
   },
   {
-    title: "Maintenance Analytics",
+    title: "Analytics",
     url: "/maintenance-analytics",
     icon: BarChart3,
-  },
-  {
-    title: "My Map",
-    url: "/map",
-    icon: Map,
   },
 ];
 
@@ -137,6 +141,32 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              
+              <Collapsible asChild defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton data-testid="button-maintenance-toggle">
+                      <Wrench className="w-4 h-4" />
+                      <span>Maintenance</span>
+                      <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180 w-4 h-4" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {maintenanceMenuItems.map((item) => (
+                        <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubButton asChild isActive={location === item.url}>
+                            <Link href={item.url} data-testid={`link-maintenance-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                              <item.icon className="w-4 h-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
               
               <Collapsible asChild defaultOpen className="group/collapsible">
                 <SidebarMenuItem>
