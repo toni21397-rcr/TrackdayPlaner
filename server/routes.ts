@@ -379,9 +379,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(enriched);
   });
 
-  app.post("/api/vehicles", isAuthenticated, async (req, res) => {
+  app.post("/api/vehicles", isAuthenticated, async (req: any, res) => {
     try {
-      const data = insertVehicleSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const data = insertVehicleSchema.parse({ ...req.body, userId });
       const vehicle = await storage.createVehicle(data);
       res.json(vehicle);
     } catch (error: any) {
@@ -389,9 +390,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/vehicles/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/vehicles/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const data = insertVehicleSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const data = insertVehicleSchema.parse({ ...req.body, userId });
       const vehicle = await storage.updateVehicle(req.params.id, data);
       if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
       res.json(vehicle);
@@ -803,6 +805,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ PLAN CHECKLIST ITEMS ============
+  // GET checklist items by query parameter (used by frontend)
+  app.get("/api/maintenance_plan_checklists", isAuthenticated, async (req: any, res) => {
+    try {
+      const planId = req.query.planId as string;
+      if (!planId) return res.status(400).json({ error: "planId is required" });
+      
+      const plan = await storage.getMaintenancePlan(planId);
+      if (!plan) return res.status(404).json({ error: "Maintenance plan not found" });
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!canModifyResource(userId, plan.ownerUserId || "", user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to view this plan's items" });
+      }
+      
+      const items = await storage.getPlanChecklistItems(planId);
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET checklist items by path parameter (alternative endpoint)
   app.get("/api/maintenance-plans/:planId/checklist-items", isAuthenticated, async (req: any, res) => {
     try {
       const plan = await storage.getMaintenancePlan(req.params.planId);

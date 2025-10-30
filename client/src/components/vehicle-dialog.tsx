@@ -35,11 +35,15 @@ interface VehicleDialogProps {
   vehicle?: any;
 }
 
+// Schema for client-side form (userId is injected by the backend)
+const vehicleFormSchema = insertVehicleSchema.omit({ userId: true });
+type VehicleFormData = Omit<InsertVehicle, 'userId'>;
+
 export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProps) {
   const { toast } = useToast();
 
-  const form = useForm<InsertVehicle>({
-    resolver: zodResolver(insertVehicleSchema),
+  const form = useForm<VehicleFormData>({
+    resolver: zodResolver(vehicleFormSchema),
     defaultValues: vehicle || {
       name: "",
       type: "motorcycle",
@@ -50,7 +54,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
   });
 
   const mutation = useMutation({
-    mutationFn: async (data: InsertVehicle) => {
+    mutationFn: async (data: VehicleFormData) => {
       if (vehicle) {
         return apiRequest("PATCH", `/api/vehicles/${vehicle.id}`, data);
       }
