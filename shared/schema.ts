@@ -237,6 +237,7 @@ export type InsertCostItem = z.infer<typeof insertCostItemSchema>;
 // ============= VEHICLES =============
 export interface Vehicle {
   id: string;
+  userId: string;
   name: string;
   type: typeof VehicleType[keyof typeof VehicleType];
   fuelType: typeof FuelType[keyof typeof FuelType];
@@ -245,6 +246,7 @@ export interface Vehicle {
 }
 
 export const insertVehicleSchema = z.object({
+  userId: z.string(),
   name: z.string().min(1, "Vehicle name is required"),
   type: z.enum(["motorcycle", "car", "other"]).default("motorcycle"),
   fuelType: z.enum(["gasoline", "diesel", "electric"]).default("gasoline"),
@@ -469,6 +471,7 @@ export const costItems = pgTable("cost_items", {
 
 export const vehicles = pgTable("vehicles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   type: varchar("type", { length: 20 }).notNull(),
   fuelType: varchar("fuel_type", { length: 20 }).notNull(),
@@ -708,6 +711,7 @@ export type InsertMaintenanceTask = z.infer<typeof insertMaintenanceTaskSchema>;
 export const insertTaskEventSchema = z.object({
   taskId: z.string(),
   type: z.enum(["status_change", "notification_sent", "triggered"]),
+  occurredAt: z.date().optional(),
   payload: z.any().default({}),
 });
 

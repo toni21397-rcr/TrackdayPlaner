@@ -917,32 +917,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ VEHICLE PLANS ============
-  app.get("/api/vehicle-plans", isAuthenticated, async (req, res) => {
+  app.get("/api/vehicle-plans", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { vehicleId, status } = req.query;
+      const user = await storage.getUser(userId);
+      
+      if (vehicleId) {
+        const vehicle = await storage.getVehicle(vehicleId as string);
+        if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+        if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+          return res.status(403).json({ error: "You don't have permission to view this vehicle's plans" });
+        }
+      }
+      
       const plans = await storage.getVehiclePlans({ 
         vehicleId: vehicleId as string,
         status: status as string 
       });
-      res.json(plans);
+      
+      const filteredPlans = [];
+      for (const plan of plans) {
+        const vehicle = await storage.getVehicle(plan.vehicleId);
+        if (vehicle && canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+          filteredPlans.push(plan);
+        }
+      }
+      
+      res.json(filteredPlans);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.get("/api/vehicle-plans/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/vehicle-plans/:id", isAuthenticated, async (req: any, res) => {
     try {
       const plan = await storage.getVehiclePlan(req.params.id);
       if (!plan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehicle = await storage.getVehicle(plan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to view this vehicle plan" });
+      }
+      
       res.json(plan);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/vehicle-plans", isAuthenticated, async (req, res) => {
+  app.post("/api/vehicle-plans", isAuthenticated, async (req: any, res) => {
     try {
       const data = insertVehiclePlanSchema.parse(req.body);
+      
+      const userId = req.user.claims.sub;
+      const vehicle = await storage.getVehicle(data.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to create plans for this vehicle" });
+      }
+      
+      const maintenancePlan = await storage.getMaintenancePlan(data.planId);
+      if (!maintenancePlan) return res.status(404).json({ error: "Maintenance plan not found" });
+      if (!canModifyResource(userId, maintenancePlan.ownerUserId || "", user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to use this maintenance plan" });
+      }
+      
       const plan = await storage.createVehiclePlan(data);
       res.json(plan);
     } catch (error: any) {
@@ -950,19 +996,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/vehicle-plans/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/vehicle-plans/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const existingPlan = await storage.getVehiclePlan(req.params.id);
+      if (!existingPlan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehicle = await storage.getVehicle(existingPlan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to modify this vehicle plan" });
+      }
+      
       const data = insertVehiclePlanSchema.partial().parse(req.body);
       const updated = await storage.updateVehiclePlan(req.params.id, data);
-      if (!updated) return res.status(404).json({ error: "Vehicle plan not found" });
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/vehicle-plans/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/vehicle-plans/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const plan = await storage.getVehiclePlan(req.params.id);
+      if (!plan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehicle = await storage.getVehicle(plan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to delete this vehicle plan" });
+      }
+      
       await storage.deleteVehiclePlan(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
@@ -971,33 +1040,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ MAINTENANCE TASKS ============
-  app.get("/api/maintenance-tasks", isAuthenticated, async (req, res) => {
+  app.get("/api/maintenance-tasks", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { vehiclePlanId, status, vehicleId } = req.query;
+      const user = await storage.getUser(userId);
+      
+      if (vehicleId) {
+        const vehicle = await storage.getVehicle(vehicleId as string);
+        if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+        if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+          return res.status(403).json({ error: "You don't have permission to view this vehicle's tasks" });
+        }
+      }
+      
+      if (vehiclePlanId) {
+        const vehiclePlan = await storage.getVehiclePlan(vehiclePlanId as string);
+        if (!vehiclePlan) return res.status(404).json({ error: "Vehicle plan not found" });
+        const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+        if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+        if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+          return res.status(403).json({ error: "You don't have permission to view this vehicle plan's tasks" });
+        }
+      }
+      
       const tasks = await storage.getMaintenanceTasks({ 
         vehiclePlanId: vehiclePlanId as string,
         status: status as string,
         vehicleId: vehicleId as string
       });
-      res.json(tasks);
+      
+      const filteredTasks = [];
+      for (const task of tasks) {
+        const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
+        if (vehiclePlan) {
+          const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+          if (vehicle && canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+            filteredTasks.push(task);
+          }
+        }
+      }
+      
+      res.json(filteredTasks);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.get("/api/maintenance-tasks/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/maintenance-tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
       const task = await storage.getMaintenanceTask(req.params.id);
       if (!task) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
+      if (!vehiclePlan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to view this task" });
+      }
+      
       res.json(task);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/maintenance-tasks", isAuthenticated, async (req, res) => {
+  app.post("/api/maintenance-tasks", isAuthenticated, async (req: any, res) => {
     try {
       const data = insertMaintenanceTaskSchema.parse(req.body);
+      
+      const userId = req.user.claims.sub;
+      const vehiclePlan = await storage.getVehiclePlan(data.vehiclePlanId);
+      if (!vehiclePlan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to create tasks for this vehicle" });
+      }
+      
       const task = await storage.createMaintenanceTask(data);
       res.json(task);
     } catch (error: any) {
@@ -1005,23 +1133,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/maintenance-tasks/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/maintenance-tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const existingTask = await storage.getMaintenanceTask(req.params.id);
+      if (!existingTask) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehiclePlan = await storage.getVehiclePlan(existingTask.vehiclePlanId);
+      if (!vehiclePlan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to modify this task" });
+      }
+      
       const parsed = insertMaintenanceTaskSchema.partial().parse(req.body);
       const data: Partial<any> = { ...parsed };
       if (parsed.dueAt && typeof parsed.dueAt === 'string') {
         data.dueAt = new Date(parsed.dueAt);
       }
       const updated = await storage.updateMaintenanceTask(req.params.id, data);
-      if (!updated) return res.status(404).json({ error: "Maintenance task not found" });
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/maintenance-tasks/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/maintenance-tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const task = await storage.getMaintenanceTask(req.params.id);
+      if (!task) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
+      if (!vehiclePlan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to delete this task" });
+      }
+      
       await storage.deleteMaintenanceTask(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
@@ -1030,14 +1187,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Task lifecycle actions
-  app.post("/api/maintenance-tasks/:id/snooze", isAuthenticated, async (req, res) => {
+  app.post("/api/maintenance-tasks/:id/snooze", isAuthenticated, async (req: any, res) => {
     try {
+      const task = await storage.getMaintenanceTask(req.params.id);
+      if (!task) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
+      if (!vehiclePlan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to modify this task" });
+      }
+      
       const { snoozedUntil } = req.body;
       if (!snoozedUntil) {
         return res.status(400).json({ error: "snoozedUntil is required" });
       }
       const updated = await storage.snoozeTask(req.params.id, new Date(snoozedUntil));
-      if (!updated) return res.status(404).json({ error: "Maintenance task not found" });
       
       await storage.createTaskEvent({
         taskId: req.params.id,
@@ -1052,14 +1223,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/maintenance-tasks/:id/complete", isAuthenticated, async (req, res) => {
+  app.post("/api/maintenance-tasks/:id/complete", isAuthenticated, async (req: any, res) => {
     try {
+      const task = await storage.getMaintenanceTask(req.params.id);
+      if (!task) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
+      if (!vehiclePlan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to modify this task" });
+      }
+      
       const { completionSource, maintenanceLogId } = req.body;
       if (!completionSource) {
         return res.status(400).json({ error: "completionSource is required" });
       }
       const updated = await storage.completeTask(req.params.id, completionSource, maintenanceLogId);
-      if (!updated) return res.status(404).json({ error: "Maintenance task not found" });
       
       await storage.createTaskEvent({
         taskId: req.params.id,
@@ -1074,10 +1259,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/maintenance-tasks/:id/dismiss", isAuthenticated, async (req, res) => {
+  app.post("/api/maintenance-tasks/:id/dismiss", isAuthenticated, async (req: any, res) => {
     try {
+      const task = await storage.getMaintenanceTask(req.params.id);
+      if (!task) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
+      if (!vehiclePlan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to modify this task" });
+      }
+      
       const updated = await storage.dismissTask(req.params.id);
-      if (!updated) return res.status(404).json({ error: "Maintenance task not found" });
       
       await storage.createTaskEvent({
         taskId: req.params.id,
@@ -1093,8 +1292,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ TASK EVENTS ============
-  app.get("/api/maintenance-tasks/:taskId/events", isAuthenticated, async (req, res) => {
+  app.get("/api/maintenance-tasks/:taskId/events", isAuthenticated, async (req: any, res) => {
     try {
+      const task = await storage.getMaintenanceTask(req.params.taskId);
+      if (!task) return res.status(404).json({ error: "Maintenance task not found" });
+      
+      const userId = req.user.claims.sub;
+      const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
+      if (!vehiclePlan) return res.status(404).json({ error: "Vehicle plan not found" });
+      
+      const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
+      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      
+      const user = await storage.getUser(userId);
+      if (!canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+        return res.status(403).json({ error: "You don't have permission to view this task's events" });
+      }
+      
       const events = await storage.getTaskEvents(req.params.taskId);
       res.json(events);
     } catch (error: any) {

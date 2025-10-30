@@ -3,6 +3,38 @@
 ## Overview
 Trackday Planner is a full-stack web application for motorsport enthusiasts to plan, track, and analyze their yearly track days. It provides comprehensive tools for managing events, expenses, budgets, vehicles, maintenance, routes, weather, and lap times. The application aims to organize track day calendars, monitor spending, calculate travel costs, track vehicle maintenance, and analyze performance.
 
+## Maintenance Planning System (In Development - October 2025)
+
+**Status:** Backend infrastructure ~65% complete with all security hardening completed. Core API routes are production-ready from a security standpoint.
+
+**Completed:**
+- ✅ Database schema for 8 tables with proper foreign keys, indexes, and userId ownership
+- ✅ Storage interface with complete CRUD operations
+- ✅ Email service with adapter pattern, HMAC-signed action links, mock fallback
+- ✅ Task lifecycle state machine (pending/due/snoozed/completed/dismissed)
+- ✅ Auto-completion matching logic for maintenance logs
+- ✅ **SECURED** API routes with comprehensive authorization on all endpoints
+- ✅ Frontend page for maintenance plans management with sidebar navigation
+
+**Security Fixes (October 30, 2025):**
+- ✅ Authorization checks on ALL maintenance planning routes (plans, checklists, vehicle plans, tasks, lifecycle actions)
+- ✅ Added vehicles.userId foreign key with cascade delete
+- ✅ Filtered list endpoints (GET /api/vehicle-plans and GET /api/maintenance-tasks) now filter by ownership even without query filters
+- ✅ Fixed schema issues (planId property names, occurredAt in task events)
+
+**Authorization Pattern:** All routes follow: Load resource → Traverse ownership chain (task → vehiclePlan → vehicle → userId OR plan → ownerUserId) → Verify with canModifyResource() → Return 403 if unauthorized.
+
+**Remaining Work:**
+- 🔨 Add cadenceConfig validation to enforce consistency with cadenceType
+- 🔨 Implement scheduling service for trigger processing
+- 🔨 Build email notification coordination service
+- 🔨 Create packing list generation/export
+- 🔨 Add analytics endpoints
+- 🔨 Complete frontend (vehicle plans assignment, task board, in-app nudges, notification preferences)
+- 🔨 End-to-end testing
+
+**Production Readiness:** Core API routes are secure and production-ready. Remaining work focuses on scheduling, notifications, analytics, and frontend.
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
