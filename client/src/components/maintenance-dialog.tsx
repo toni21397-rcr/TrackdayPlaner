@@ -60,7 +60,7 @@ export function MaintenanceDialog({ open, onOpenChange, vehicleId }: Maintenance
   const { toast } = useToast();
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<MaintenanceTask[]>({
-    queryKey: ["/api/maintenance-tasks", { vehicleId, status: "due,pending" }],
+    queryKey: [`/api/maintenance-tasks?vehicleId=${vehicleId}&status=due,pending`],
     enabled: open && !!vehicleId,
   });
 
