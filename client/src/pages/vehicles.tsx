@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Car, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Plus, Car, ChevronDown, ChevronUp, Trash2, Wrench } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
@@ -104,7 +105,17 @@ export default function Vehicles() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link href={`/vehicles/${vehicle.id}/maintenance`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid={`button-maintenance-plans-${vehicle.id}`}
+                      >
+                        <Wrench className="w-4 h-4 mr-2" />
+                        Plans
+                      </Button>
+                    </Link>
                     <Button
                       variant="outline"
                       size="sm"
@@ -112,7 +123,7 @@ export default function Vehicles() {
                       data-testid={`button-add-maintenance-${vehicle.id}`}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Maintenance
+                      Add Log
                     </Button>
                     <Button
                       variant="ghost"

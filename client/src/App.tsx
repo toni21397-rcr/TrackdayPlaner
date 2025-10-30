@@ -13,6 +13,7 @@ import Trackdays from "@/pages/trackdays";
 import TrackdayDetail from "@/pages/trackday-detail";
 import Tracks from "@/pages/tracks";
 import Vehicles from "@/pages/vehicles";
+import VehicleMaintenance from "@/pages/vehicle-maintenance";
 import MapPage from "@/pages/map";
 import SettingsPage from "@/pages/settings";
 import Booking from "@/pages/booking";
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/tracks" component={Tracks} />
       <Route path="/organizers" component={Organizers} />
       <Route path="/vehicles" component={Vehicles} />
+      <Route path="/vehicles/:id/maintenance" component={VehicleMaintenance} />
       <Route path="/booking" component={Booking} />
       <Route path="/booking/:trackId" component={BookingDetail} />
       <Route path="/maintenance-plans" component={MaintenancePlans} />
