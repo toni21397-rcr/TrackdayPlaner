@@ -50,10 +50,11 @@ export function MapView({
       scrollWheelZoom: true,
     });
 
-    // Add tile layer
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    // Add Google Maps-style tile layer (CartoDB Voyager - clean, modern look similar to Google Maps)
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       maxZoom: 19,
+      subdomains: 'abcd',
     }).addTo(map);
 
     mapRef.current = map;
