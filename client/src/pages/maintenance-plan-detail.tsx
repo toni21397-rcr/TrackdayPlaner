@@ -26,14 +26,14 @@ export default function MaintenancePlanDetail() {
   });
 
   const { data: checklistItems = [], isLoading: itemsLoading } = useQuery<PlanChecklistItem[]>({
-    queryKey: [`/api/checklist-items?planId=${id}`],
+    queryKey: [`/api/maintenance-plans/${id}/checklist-items`],
   });
 
   const createItemMutation = useMutation({
     mutationFn: async (data: InsertPlanChecklistItem) =>
-      await apiRequest("POST", "/api/checklist-items", data),
+      await apiRequest("POST", `/api/maintenance-plans/${id}/checklist-items`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/checklist-items?planId=${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/maintenance-plans/${id}/checklist-items`] });
       setIsDialogOpen(false);
       setSelectedItem(null);
       toast({ title: "Checklist item added successfully" });
@@ -45,9 +45,9 @@ export default function MaintenancePlanDetail() {
 
   const updateItemMutation = useMutation({
     mutationFn: async ({ itemId, data }: { itemId: string; data: Partial<InsertPlanChecklistItem> }) =>
-      await apiRequest("PATCH", `/api/checklist-items/${itemId}`, data),
+      await apiRequest("PATCH", `/api/maintenance-plans/${id}/checklist-items/${itemId}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/checklist-items?planId=${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/maintenance-plans/${id}/checklist-items`] });
       setIsDialogOpen(false);
       setSelectedItem(null);
       toast({ title: "Checklist item updated successfully" });
@@ -59,9 +59,9 @@ export default function MaintenancePlanDetail() {
 
   const deleteItemMutation = useMutation({
     mutationFn: async (itemId: string) =>
-      await apiRequest("DELETE", `/api/checklist-items/${itemId}`, undefined),
+      await apiRequest("DELETE", `/api/maintenance-plans/${id}/checklist-items/${itemId}`, undefined),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/checklist-items?planId=${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/maintenance-plans/${id}/checklist-items`] });
       toast({ title: "Checklist item deleted successfully" });
     },
     onError: (error: Error) => {
@@ -73,7 +73,7 @@ export default function MaintenancePlanDetail() {
     if (selectedItem) {
       updateItemMutation.mutate({ itemId: selectedItem.id, data });
     } else {
-      createItemMutation.mutate({ ...data, planId: id! });
+      createItemMutation.mutate(data);
     }
   };
 
