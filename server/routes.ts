@@ -1343,6 +1343,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ MAINTENANCE ANALYTICS ============
+  app.get("/api/maintenance/analytics", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const userVehicles = await storage.getVehiclesByUserId(userId);
+      
+      if (userVehicles.length === 0) {
+        return res.json({
+          totalTasks: 0,
+          completedTasks: 0,
+          dismissedTasks: 0,
+          overdueTasks: 0,
+          dueSoonTasks: 0,
+          completionRate: 0,
+          averageCompletionTimeDays: 0,
+          tasksByStatus: { pending: 0, due: 0, snoozed: 0, completed: 0, dismissed: 0 },
+          tasksByVehicle: [],
+        });
+      }
+      
+      const allTasksPromises = userVehicles.map(v => storage.getMaintenanceTasks({ vehicleId: v.id }));
+      const allTasksArrays = await Promise.all(allTasksPromises);
+      const userTasks = allTasksArrays.flat();
+      
+      const tasksByVehicleId = new Map<string, any[]>();
+      for (let i = 0; i < userVehicles.length; i++) {
+        tasksByVehicleId.set(userVehicles[i].id, allTasksArrays[i]);
+      }
+      
+      const now = new Date();
+      const totalTasks = userTasks.length;
+      const completedTasks = userTasks.filter(t => t.status === 'completed');
+      const dismissedTasks = userTasks.filter(t => t.status === 'dismissed');
+      const overdueTasks = userTasks.filter(t => 
+        t.dueAt && 
+        (t.status === 'pending' || t.status === 'due' || t.status === 'snoozed') && 
+        new Date(t.dueAt) < now
+      );
+      const dueSoonTasks = userTasks.filter(t =>
+        t.dueAt &&
+        (t.status === 'pending' || t.status === 'due' || t.status === 'snoozed') &&
+        new Date(t.dueAt) >= now &&
+        new Date(t.dueAt) <= new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      );
+      
+      let totalCompletionTimeMs = 0;
+      let completedWithEvents = 0;
+      
+      const completedTaskIds = completedTasks.map(t => t.id);
+      const taskEventsMap = await storage.getTaskEventsByTaskIds(completedTaskIds);
+      
+      for (const task of completedTasks) {
+        const events = taskEventsMap.get(task.id) || [];
+        const triggeredEvent = events.find((e: any) => e.type === 'triggered');
+        const reversedEvents = [...events].reverse();
+        const completedEvent = reversedEvents.find((e: any) => 
+          e.type === 'status_change' && 
+          e.payload?.newStatus === 'completed'
+        );
+        
+        if (triggeredEvent && completedEvent) {
+          const timeToComplete = new Date(completedEvent.occurredAt).getTime() - 
+                                  new Date(triggeredEvent.occurredAt).getTime();
+          totalCompletionTimeMs += timeToComplete;
+          completedWithEvents++;
+        }
+      }
+      
+      const averageCompletionTimeDays = completedWithEvents > 0
+        ? totalCompletionTimeMs / completedWithEvents / (1000 * 60 * 60 * 24)
+        : 0;
+      
+      const completionRate = totalTasks > 0
+        ? (completedTasks.length / totalTasks) * 100
+        : 0;
+      
+      const tasksByStatus = {
+        pending: userTasks.filter(t => t.status === 'pending').length,
+        due: userTasks.filter(t => t.status === 'due').length,
+        snoozed: userTasks.filter(t => t.status === 'snoozed').length,
+        completed: completedTasks.length,
+        dismissed: dismissedTasks.length,
+      };
+      
+      const tasksByVehicle = userVehicles.map((vehicle) => {
+          const vehicleTasks = tasksByVehicleId.get(vehicle.id) || [];
+          
+          return {
+            vehicleId: vehicle.id,
+            vehicleName: vehicle.name,
+            totalTasks: vehicleTasks.length,
+            completedTasks: vehicleTasks.filter(t => t.status === 'completed').length,
+            overdueTasks: vehicleTasks.filter(t => 
+              t.dueAt &&
+              (t.status === 'pending' || t.status === 'due' || t.status === 'snoozed') && 
+              new Date(t.dueAt) < now
+            ).length,
+          };
+        });
+      
+      res.json({
+        totalTasks,
+        completedTasks: completedTasks.length,
+        dismissedTasks: dismissedTasks.length,
+        overdueTasks: overdueTasks.length,
+        dueSoonTasks: dueSoonTasks.length,
+        completionRate: Math.round(completionRate * 10) / 10,
+        averageCompletionTimeDays: Math.round(averageCompletionTimeDays * 10) / 10,
+        tasksByStatus,
+        tasksByVehicle: tasksByVehicle.filter(v => v.totalTasks > 0),
+      });
+    } catch (error: any) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============ MAINTENANCE SCHEDULING ============
   app.post("/api/maintenance/process-triggers", isAuthenticated, async (req: any, res) => {
     try {

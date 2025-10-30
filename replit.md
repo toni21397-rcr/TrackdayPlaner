@@ -5,7 +5,7 @@ Trackday Planner is a full-stack web application for motorsport enthusiasts to p
 
 ## Maintenance Planning System (In Development - October 2025)
 
-**Status:** Backend infrastructure ~85% complete. Frontend 60% complete. Core scheduling, notifications, security, and primary UI flows fully implemented and production-ready.
+**Status:** Backend infrastructure ~85% complete. Frontend 80% complete (4 of 5 main pages finished). Core scheduling, notifications, security, and primary UI flows fully implemented and production-ready.
 
 **Completed Backend Infrastructure:**
 - ✅ Database schema for 8 tables with proper foreign keys, indexes, and userId ownership
@@ -23,6 +23,8 @@ Trackday Planner is a full-stack web application for motorsport enthusiasts to p
 - ✅ **Maintenance Plans Page** (`/maintenance-plans`): Create and manage plan templates with checklist items
 - ✅ **Vehicle Maintenance Page** (`/vehicles/:id/maintenance`): Assign/unassign plans to specific vehicles with activation details
 - ✅ **Maintenance Tasks Board** (`/maintenance-tasks`): List view with status/vehicle filters, complete/snooze/dismiss actions, overdue highlighting, task details dialog
+- ✅ **In-App Nudges**: Maintenance log dialog shows due tasks for current vehicle with quick-complete functionality
+- ✅ **Notification Preferences UI**: Settings page with email/in-app toggles, timezone selection, properly handles userId from authenticated user
 - ✅ All pages integrated into sidebar navigation with appropriate icons
 - ✅ Proper loading states, error handling, toast notifications, and cache invalidation
 
@@ -41,11 +43,11 @@ Trackday Planner is a full-stack web application for motorsport enthusiasts to p
 - 🔨 Implement cron job scheduling for automated trigger processing
 - 🔨 Configure production email provider (Resend/Postmark/SendGrid)
 - 🔨 Create packing list generation/export
-- 🔨 Add analytics endpoints
-- 🔨 Complete remaining frontend: in-app nudges in maintenance log dialog, notification preferences UI, analytics dashboard
+- 🔨 Add analytics endpoints (time to complete, overdue counts, completion rate)
+- 🔨 Create analytics dashboard showing maintenance metrics (final frontend page)
 - 🔨 End-to-end testing
 
-**Production Readiness:** Core API routes, scheduling service, notification system, and primary UI flows (plan creation, vehicle assignment, task management) are secure and production-ready. Remaining work focuses on cron automation, packing lists, analytics, and auxiliary frontend features.
+**Production Readiness:** Core API routes, scheduling service, notification system, and primary UI flows (plan creation, vehicle assignment, task management, in-app nudges, notification preferences) are secure and production-ready. Remaining work focuses on analytics visualization, cron automation, and packing lists.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

@@ -77,6 +77,7 @@ export interface IStorage {
 
   // Vehicles
   getVehicles(): Promise<Vehicle[]>;
+  getVehiclesByUserId(userId: string): Promise<Vehicle[]>;
   getVehicle(id: string): Promise<Vehicle | undefined>;
   createVehicle(data: InsertVehicle): Promise<Vehicle>;
   updateVehicle(id: string, data: InsertVehicle): Promise<Vehicle | undefined>;
@@ -150,6 +151,7 @@ export interface IStorage {
   // Task Events
   createTaskEvent(data: InsertTaskEvent): Promise<TaskEvent>;
   getTaskEvents(taskId: string): Promise<TaskEvent[]>;
+  getTaskEventsByTaskIds(taskIds: string[]): Promise<Map<string, TaskEvent[]>>;
 
   // Notification Preferences
   getNotificationPreferences(userId: string): Promise<NotificationPreferences | undefined>;
@@ -401,6 +403,10 @@ export class MemStorage implements IStorage {
   // ========== VEHICLES ==========
   async getVehicles(): Promise<Vehicle[]> {
     return Array.from(this.vehicles.values());
+  }
+
+  async getVehiclesByUserId(userId: string): Promise<Vehicle[]> {
+    return Array.from(this.vehicles.values()).filter(v => v.userId === userId);
   }
 
   async getVehicle(id: string): Promise<Vehicle | undefined> {
@@ -787,6 +793,11 @@ export class DbStorage implements IStorage {
   async getVehicles(): Promise<Vehicle[]> {
     await this.ensureInitialized();
     return await this.db.select().from(vehicles) as Vehicle[];
+  }
+
+  async getVehiclesByUserId(userId: string): Promise<Vehicle[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(vehicles).where(eq(vehicles.userId, userId)) as Vehicle[];
   }
 
   async getVehicle(id: string): Promise<Vehicle | undefined> {
@@ -1186,6 +1197,35 @@ export class DbStorage implements IStorage {
     await this.ensureInitialized();
     const result = await this.db.select().from(taskEvents).where(eq(taskEvents.taskId, taskId));
     return result.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()) as TaskEvent[];
+  }
+
+  async getTaskEventsByTaskIds(taskIds: string[]): Promise<Map<string, TaskEvent[]>> {
+    await this.ensureInitialized();
+    if (taskIds.length === 0) {
+      return new Map();
+    }
+    
+    const result = await this.db.select().from(taskEvents).where(
+      taskIds.length === 1 
+        ? eq(taskEvents.taskId, taskIds[0])
+        : drizzleSql`${taskEvents.taskId} IN (${drizzleSql.join(taskIds.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
+    );
+    
+    const eventsByTaskId = new Map<string, TaskEvent[]>();
+    for (const event of result) {
+      const taskId = (event as any).taskId;
+      if (!eventsByTaskId.has(taskId)) {
+        eventsByTaskId.set(taskId, []);
+      }
+      eventsByTaskId.get(taskId)!.push(event as TaskEvent);
+    }
+    
+    const eventsArrays = Array.from(eventsByTaskId.values());
+    for (const events of eventsArrays) {
+      events.sort((a: any, b: any) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+    }
+    
+    return eventsByTaskId;
   }
 
   // ========== NOTIFICATION PREFERENCES ==========
