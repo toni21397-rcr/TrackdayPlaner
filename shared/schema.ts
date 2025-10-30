@@ -256,6 +256,25 @@ export const insertVehicleSchema = z.object({
 
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 
+// ============= MOTORCYCLE MODELS =============
+export interface MotorcycleModel {
+  id: string;
+  name: string;
+  isActive: boolean;
+  displayOrder: number;
+  createdBy: string | null;
+  updatedAt: Date | null;
+}
+
+export const insertMotorcycleModelSchema = z.object({
+  name: z.string().min(1, "Model name is required"),
+  isActive: z.boolean().default(true),
+  displayOrder: z.number().default(0),
+  createdBy: z.string().nullable().optional(),
+});
+
+export type InsertMotorcycleModel = z.infer<typeof insertMotorcycleModelSchema>;
+
 // ============= MAINTENANCE LOGS =============
 export interface MaintenanceLog {
   id: string;
@@ -477,6 +496,15 @@ export const vehicles = pgTable("vehicles", {
   fuelType: varchar("fuel_type", { length: 20 }).notNull(),
   consumptionPer100: real("consumption_per_100").notNull(),
   notes: text("notes").notNull().default(""),
+});
+
+export const motorcycleModels = pgTable("motorcycle_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdBy: varchar("created_by"), // null = system/admin, otherwise user ID
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const maintenanceLogs = pgTable("maintenance_logs", {
