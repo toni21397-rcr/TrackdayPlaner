@@ -95,6 +95,8 @@ export interface IStorage {
   // Users (Replit Auth integration)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>;
+  toggleUserAdmin(id: string, isAdmin: boolean): Promise<User>;
 }
 
 export class MemStorage implements IStorage {
@@ -460,6 +462,14 @@ export class MemStorage implements IStorage {
   }
 
   async upsertUser(user: UpsertUser): Promise<User> {
+    throw new Error("User operations not implemented in MemStorage");
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    throw new Error("User operations not implemented in MemStorage");
+  }
+
+  async toggleUserAdmin(id: string, isAdmin: boolean): Promise<User> {
     throw new Error("User operations not implemented in MemStorage");
   }
 }
@@ -871,6 +881,21 @@ export class DbStorage implements IStorage {
           updatedAt: new Date(),
         },
       })
+      .returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(users);
+  }
+
+  async toggleUserAdmin(id: string, isAdmin: boolean): Promise<User> {
+    await this.ensureInitialized();
+    const [user] = await this.db
+      .update(users)
+      .set({ isAdmin, updatedAt: new Date() })
+      .where(eq(users.id, id))
       .returning();
     return user;
   }

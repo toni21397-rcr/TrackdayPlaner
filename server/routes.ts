@@ -621,6 +621,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(monthly);
   });
 
+  // ============ ADMIN ROUTES ============
+  
+  // Get all users (admin only)
+  app.get("/api/admin/users", isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const trackdays = await storage.getTrackdays();
+      
+      // Calculate activity stats for each user
+      const usersWithStats = users.map(user => {
+        const userTrackdays = trackdays.filter(td => {
+          // This is a simplified version - in production you'd want to track user ownership of trackdays
+          return true;
+        });
+        
+        return {
+          ...user,
+          trackdayCount: userTrackdays.length,
+          lastActive: user.updatedAt,
+        };
+      });
+      
+      res.json(usersWithStats);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Toggle admin status (admin only)
+  app.patch("/api/admin/users/:id/toggle-admin", isAdmin, async (req: any, res) => {
+    try {
+      const targetUserId = req.params.id;
+      const currentUserId = req.user.claims.sub;
+      
+      // Prevent users from removing their own admin status
+      if (targetUserId === currentUserId) {
+        return res.status(400).json({ error: "You cannot modify your own admin status" });
+      }
+      
+      const user = await storage.getUser(targetUserId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      
+      const updated = await storage.toggleUserAdmin(targetUserId, !user.isAdmin);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get system statistics (admin only)
+  app.get("/api/admin/stats", isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const tracks = await storage.getTracks();
+      const organizers = await storage.getOrganizers();
+      const trackdays = await storage.getTrackdays();
+      
+      const systemTracks = tracks.filter(t => !t.createdBy);
+      const userTracks = tracks.filter(t => t.createdBy);
+      const systemOrganizers = organizers.filter(o => !o.createdBy);
+      const userOrganizers = organizers.filter(o => o.createdBy);
+      
+      res.json({
+        totalUsers: users.length,
+        adminUsers: users.filter(u => u.isAdmin).length,
+        totalTracks: tracks.length,
+        systemTracks: systemTracks.length,
+        userTracks: userTracks.length,
+        totalOrganizers: organizers.length,
+        systemOrganizers: systemOrganizers.length,
+        userOrganizers: userOrganizers.length,
+        totalTrackdays: trackdays.length,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
