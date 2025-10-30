@@ -22,6 +22,7 @@ import Booking from "@/pages/booking";
 import BookingDetail from "@/pages/booking-detail";
 import Organizers from "@/pages/organizers";
 import MaintenancePlans from "@/pages/maintenance-plans";
+import MaintenancePlanDetail from "@/pages/maintenance-plan-detail";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminUsers from "@/pages/admin-users";
 import NotFound from "@/pages/not-found";
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/organizers" component={Organizers} />
       <Route path="/vehicles" component={Vehicles} />
       <Route path="/vehicles/:id/maintenance" component={VehicleMaintenance} />
+      <Route path="/maintenance-plans/:id" component={MaintenancePlanDetail} />
       <Route path="/maintenance-plans" component={MaintenancePlans} />
       <Route path="/maintenance-tasks" component={MaintenanceTasks} />
       <Route path="/maintenance-analytics" component={MaintenanceAnalytics} />
