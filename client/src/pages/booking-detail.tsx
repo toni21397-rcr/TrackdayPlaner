@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, ExternalLink, AlertTriangle, Plus } from "lucide-react";
+import { ArrowLeft, ExternalLink, AlertTriangle, Plus, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import type { Organizer, Track, Vehicle, InsertTrackday } from "@shared/schema";
@@ -17,6 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 
 export default function BookingDetail() {
   const [, params] = useRoute("/booking/:organizerId");
@@ -27,6 +30,8 @@ export default function BookingDetail() {
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
   const [entryFeeDisplay, setEntryFeeDisplay] = useState("");
+  const [trackSearchOpen, setTrackSearchOpen] = useState(false);
+  const [trackSearch, setTrackSearch] = useState("");
 
   const { data: organizer, isLoading: organizerLoading } = useQuery<Organizer>({
     queryKey: ["/api/organizers", organizerId],
@@ -42,6 +47,15 @@ export default function BookingDetail() {
   const { data: tracks } = useQuery<Track[]>({
     queryKey: ["/api/tracks"],
   });
+
+  // Filter tracks based on search
+  const filteredTracks = tracks?.filter((track) => {
+    if (!trackSearch) return true;
+    const searchLower = trackSearch.toLowerCase();
+    const nameMatch = track.name.toLowerCase().includes(searchLower);
+    const countryMatch = track.country.toLowerCase().includes(searchLower);
+    return nameMatch || countryMatch;
+  }) || [];
 
   // Fetch vehicles
   const { data: vehicles } = useQuery<Vehicle[]>({
@@ -233,28 +247,67 @@ export default function BookingDetail() {
                       control={form.control}
                       name="trackId"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col">
                           <FormLabel>Track</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-track">
-                                <SelectValue placeholder="Select a track" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {!tracks || tracks.length === 0 ? (
-                                <div className="p-2 text-sm text-muted-foreground">
-                                  No tracks available
-                                </div>
-                              ) : (
-                                tracks.map((track) => (
-                                  <SelectItem key={track.id} value={track.id}>
-                                    {track.name} - {track.country}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
+                          <Popover open={trackSearchOpen} onOpenChange={setTrackSearchOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={trackSearchOpen}
+                                  className={cn(
+                                    "w-full justify-between",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                  data-testid="select-track"
+                                >
+                                  {field.value
+                                    ? tracks?.find((track) => track.id === field.value)?.name
+                                    : "Search for a track..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[350px] p-0" align="start">
+                              <Command shouldFilter={false}>
+                                <CommandInput 
+                                  placeholder="Search tracks..." 
+                                  data-testid="input-track-search"
+                                  value={trackSearch}
+                                  onValueChange={setTrackSearch}
+                                />
+                                <CommandList>
+                                  <CommandEmpty>No track found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {filteredTracks.map((track) => (
+                                      <CommandItem
+                                        key={track.id}
+                                        value={track.id}
+                                        onSelect={() => {
+                                          form.setValue("trackId", track.id);
+                                          setTrackSearchOpen(false);
+                                          setTrackSearch("");
+                                        }}
+                                        data-testid={`track-option-${track.id}`}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === track.id ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <div className="flex flex-col">
+                                          <span className="font-medium">{track.name}</span>
+                                          <span className="text-sm text-muted-foreground">{track.country}</span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
