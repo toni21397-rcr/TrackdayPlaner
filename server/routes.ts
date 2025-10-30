@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { isAdmin, canModifyResource } from "./adminMiddleware";
 import { seedTracks } from "./seed-tracks";
+import multer from "multer";
+import Papa from "papaparse";
 import {
   insertOrganizerSchema,
   insertTrackSchema,
@@ -22,6 +24,7 @@ import {
   insertMaintenanceTaskSchema,
   insertTaskEventSchema,
   insertNotificationPreferencesSchema,
+  insertMotorcycleModelSchema,
   type BudgetSummary,
   type DashboardStats,
   type MonthlySpending,
@@ -1631,6 +1634,222 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error handling email action:", error);
       res.status(500).send("An error occurred processing your request");
+    }
+  });
+
+  // ============ ADMIN DATA MANAGEMENT ============
+  
+  // Configure multer for file uploads (memory storage for small CSV files)
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  });
+
+  // Export motorcycle models as CSV
+  app.get("/api/admin/reference-data/motorcycle-models/export", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const models = await storage.getMotorcycleModels();
+      
+      const csvData = Papa.unparse(models.map(m => ({
+        name: m.name,
+        isActive: m.isActive,
+        displayOrder: m.displayOrder,
+      })), {
+        header: true,
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="motorcycle-models.csv"');
+      res.send(csvData);
+    } catch (error) {
+      console.error("Error exporting motorcycle models:", error);
+      res.status(500).json({ error: "Failed to export motorcycle models" });
+    }
+  });
+
+  // Export tracks as CSV
+  app.get("/api/admin/reference-data/tracks/export", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const tracks = await storage.getTracks();
+      
+      const csvData = Papa.unparse(tracks.map(t => ({
+        name: t.name,
+        country: t.country,
+        lat: t.lat,
+        lng: t.lng,
+        organizerName: t.organizerName || "",
+        organizerWebsite: t.organizerWebsite || "",
+      })), {
+        header: true,
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="tracks.csv"');
+      res.send(csvData);
+    } catch (error) {
+      console.error("Error exporting tracks:", error);
+      res.status(500).json({ error: "Failed to export tracks" });
+    }
+  });
+
+  // Export organizers as CSV
+  app.get("/api/admin/reference-data/organizers/export", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const organizers = await storage.getOrganizers();
+      
+      const csvData = Papa.unparse(organizers.map(o => ({
+        name: o.name,
+        website: o.website || "",
+        contactEmail: o.contactEmail || "",
+        contactPhone: o.contactPhone || "",
+        description: o.description || "",
+      })), {
+        header: true,
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="organizers.csv"');
+      res.send(csvData);
+    } catch (error) {
+      console.error("Error exporting organizers:", error);
+      res.status(500).json({ error: "Failed to export organizers" });
+    }
+  });
+
+  // Import motorcycle models from CSV
+  app.post("/api/admin/reference-data/motorcycle-models/import", isAuthenticated, isAdmin, upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const csvContent = req.file.buffer.toString('utf-8');
+      const parsed = Papa.parse(csvContent, { header: true, skipEmptyLines: true });
+
+      if (parsed.errors.length > 0) {
+        return res.status(400).json({ error: "CSV parsing error", details: parsed.errors });
+      }
+
+      const models = [];
+      const errors = [];
+
+      for (let i = 0; i < parsed.data.length; i++) {
+        const row: any = parsed.data[i];
+        try {
+          const model = insertMotorcycleModelSchema.parse({
+            name: row.name?.trim(),
+            isActive: row.isActive === 'true' || row.isActive === true,
+            displayOrder: parseInt(row.displayOrder) || i,
+            createdBy: null, // System/admin data
+          });
+          models.push(model);
+        } catch (error: any) {
+          errors.push({ row: i + 1, error: error.message });
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ error: "Validation errors", details: errors });
+      }
+
+      await storage.bulkReplaceMotorcycleModels(models);
+      res.json({ success: true, imported: models.length });
+    } catch (error) {
+      console.error("Error importing motorcycle models:", error);
+      res.status(500).json({ error: "Failed to import motorcycle models" });
+    }
+  });
+
+  // Import tracks from CSV
+  app.post("/api/admin/reference-data/tracks/import", isAuthenticated, isAdmin, upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const csvContent = req.file.buffer.toString('utf-8');
+      const parsed = Papa.parse(csvContent, { header: true, skipEmptyLines: true });
+
+      if (parsed.errors.length > 0) {
+        return res.status(400).json({ error: "CSV parsing error", details: parsed.errors });
+      }
+
+      const tracks = [];
+      const errors = [];
+
+      for (let i = 0; i < parsed.data.length; i++) {
+        const row: any = parsed.data[i];
+        try {
+          const track = insertTrackSchema.parse({
+            name: row.name?.trim(),
+            country: row.country?.trim(),
+            lat: parseFloat(row.lat),
+            lng: parseFloat(row.lng),
+            organizerName: row.organizerName?.trim() || "",
+            organizerWebsite: row.organizerWebsite?.trim() || "",
+            createdBy: null, // System/admin data
+          });
+          tracks.push(track);
+        } catch (error: any) {
+          errors.push({ row: i + 1, error: error.message });
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ error: "Validation errors", details: errors });
+      }
+
+      await storage.bulkReplaceTracks(tracks);
+      res.json({ success: true, imported: tracks.length });
+    } catch (error) {
+      console.error("Error importing tracks:", error);
+      res.status(500).json({ error: "Failed to import tracks" });
+    }
+  });
+
+  // Import organizers from CSV
+  app.post("/api/admin/reference-data/organizers/import", isAuthenticated, isAdmin, upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const csvContent = req.file.buffer.toString('utf-8');
+      const parsed = Papa.parse(csvContent, { header: true, skipEmptyLines: true });
+
+      if (parsed.errors.length > 0) {
+        return res.status(400).json({ error: "CSV parsing error", details: parsed.errors });
+      }
+
+      const organizers = [];
+      const errors = [];
+
+      for (let i = 0; i < parsed.data.length; i++) {
+        const row: any = parsed.data[i];
+        try {
+          const organizer = insertOrganizerSchema.parse({
+            name: row.name?.trim(),
+            website: row.website?.trim() || "",
+            contactEmail: row.contactEmail?.trim() || "",
+            contactPhone: row.contactPhone?.trim() || "",
+            description: row.description?.trim() || "",
+            createdBy: null, // System/admin data
+          });
+          organizers.push(organizer);
+        } catch (error: any) {
+          errors.push({ row: i + 1, error: error.message });
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ error: "Validation errors", details: errors });
+      }
+
+      await storage.bulkReplaceOrganizers(organizers);
+      res.json({ success: true, imported: organizers.length });
+    } catch (error) {
+      console.error("Error importing organizers:", error);
+      res.status(500).json({ error: "Failed to import organizers" });
     }
   });
 
