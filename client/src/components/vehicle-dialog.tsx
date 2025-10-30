@@ -44,7 +44,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
       name: "",
       type: "motorcycle",
       fuelType: "gasoline",
-      consumptionPer100: 6.5,
+      consumptionPer100: 0,
       notes: "",
     },
   });
@@ -96,69 +96,24 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-vehicle-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="motorcycle">Motorcycle</SelectItem>
-                        <SelectItem value="car">Car</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="fuelType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fuel Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-fuel-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="gasoline">Gasoline</SelectItem>
-                        <SelectItem value="diesel">Diesel</SelectItem>
-                        <SelectItem value="electric">Electric</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <FormField
               control={form.control}
-              name="consumptionPer100"
+              name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fuel Consumption (L/100km)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                      data-testid="input-consumption"
-                    />
-                  </FormControl>
+                  <FormLabel>Type</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-vehicle-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="motorcycle">Motorcycle</SelectItem>
+                      <SelectItem value="car">Car</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

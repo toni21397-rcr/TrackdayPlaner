@@ -135,8 +135,11 @@ export function MaintenanceDialog({ open, onOpenChange, vehicleId }: Maintenance
                         type="number"
                         step="0.01"
                         {...field}
-                        onChange={(e) => field.onChange(Math.round(parseFloat(e.target.value) * 100))}
-                        value={field.value ? field.value / 100 : 0}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === "" ? 0 : Math.round(parseFloat(value) * 100));
+                        }}
+                        value={field.value === 0 ? "" : (field.value / 100).toString()}
                         data-testid="input-cost"
                       />
                     </FormControl>
