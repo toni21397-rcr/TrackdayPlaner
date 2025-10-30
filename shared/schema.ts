@@ -58,6 +58,78 @@ export const ScheduleBlockType = {
   OTHER: "other",
 } as const;
 
+export const CadenceType = {
+  TRACKDAY: "trackday",
+  TIME_INTERVAL: "time_interval",
+  ODOMETER: "odometer",
+  ENGINE_HOURS: "engine_hours",
+} as const;
+
+export const TaskStatus = {
+  PENDING: "pending",
+  DUE: "due",
+  SNOOZED: "snoozed",
+  COMPLETED: "completed",
+  DISMISSED: "dismissed",
+} as const;
+
+export const CompletionSource = {
+  AUTO: "auto",
+  MANUAL: "manual",
+} as const;
+
+export const VehiclePlanStatus = {
+  ACTIVE: "active",
+  PAUSED: "paused",
+} as const;
+
+export const TaskEventType = {
+  STATUS_CHANGE: "status_change",
+  NOTIFICATION_SENT: "notification_sent",
+  TRIGGERED: "triggered",
+} as const;
+
+export const PackingListSource = {
+  PLAN: "plan",
+  MANUAL: "manual",
+} as const;
+
+export const cadenceConfigSchema = z.object({
+  trackday: z.object({
+    afterEveryN: z.number().min(1).default(1),
+  }).optional(),
+  time_interval: z.object({
+    intervalDays: z.number().min(1),
+    startDate: z.string().optional(),
+  }).optional(),
+  odometer: z.object({
+    intervalKm: z.number().min(1),
+    startOdometer: z.number().optional(),
+  }).optional(),
+  engine_hours: z.object({
+    intervalHours: z.number().min(1),
+    startHours: z.number().optional(),
+  }).optional(),
+});
+
+export type CadenceConfig = z.infer<typeof cadenceConfigSchema>;
+
+export const dueOffsetSchema = z.object({
+  days: z.number().default(0),
+  trackdays: z.number().default(0),
+  odometerKm: z.number().default(0),
+});
+
+export type DueOffset = z.infer<typeof dueOffsetSchema>;
+
+export const autoCompleteMatcherSchema = z.object({
+  maintenanceType: z.string().optional(),
+  odometerTolerance: z.number().optional(),
+  partsRequired: z.array(z.string()).optional(),
+});
+
+export type AutoCompleteMatcher = z.infer<typeof autoCompleteMatcherSchema>;
+
 // ============= ORGANIZERS =============
 export interface Organizer {
   id: string;
@@ -471,6 +543,294 @@ export const weatherCache = pgTable("weather_cache", {
   rainChance: integer("rain_chance").notNull(),
   windSpeed: real("wind_speed").notNull(),
   description: varchar("description", { length: 255 }).notNull(),
+});
+
+// ============= MAINTENANCE PLANNING =============
+// Interfaces
+export interface MaintenancePlan {
+  id: string;
+  ownerUserId: string | null;
+  name: string;
+  description: string;
+  isTemplate: boolean;
+  cadenceType: typeof CadenceType[keyof typeof CadenceType];
+  cadenceConfig: CadenceConfig;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PlanChecklistItem {
+  id: string;
+  planId: string;
+  title: string;
+  description: string;
+  maintenanceType: string;
+  defaultDueOffset: DueOffset;
+  autoCompleteMatcher: AutoCompleteMatcher;
+  sequence: number;
+  isCritical: boolean;
+}
+
+export interface ChecklistItemPart {
+  id: string;
+  checklistItemId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  notes: string;
+  isTool: boolean;
+}
+
+export interface VehiclePlan {
+  id: string;
+  vehicleId: string;
+  planId: string;
+  activationDate: string;
+  odometerAtActivation: number | null;
+  engineHoursAtActivation: number | null;
+  timezone: string;
+  status: typeof VehiclePlanStatus[keyof typeof VehiclePlanStatus];
+  metadata: any; // JSON
+  createdAt: Date;
+}
+
+export interface MaintenanceTask {
+  id: string;
+  vehiclePlanId: string;
+  checklistItemId: string | null;
+  customTitle: string | null;
+  notes: string;
+  dueAt: Date;
+  windowStart: Date | null;
+  status: typeof TaskStatus[keyof typeof TaskStatus];
+  snoozedUntil: Date | null;
+  completedAt: Date | null;
+  dismissedAt: Date | null;
+  completionSource: typeof CompletionSource[keyof typeof CompletionSource] | null;
+  maintenanceLogId: string | null;
+  lastNotificationAt: Date | null;
+  triggerContext: any; // JSON
+  hashId: string | null;
+  createdAt: Date;
+}
+
+export interface TaskEvent {
+  id: string;
+  taskId: string;
+  type: typeof TaskEventType[keyof typeof TaskEventType];
+  payload: any; // JSON
+  occurredAt: Date;
+}
+
+export interface PackingList {
+  id: string;
+  vehiclePlanId: string;
+  checklistItemId: string | null;
+  source: typeof PackingListSource[keyof typeof PackingListSource];
+  generatedForTrackdayId: string | null;
+  exportedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface NotificationPreferences {
+  id: string;
+  userId: string;
+  emailEnabled: boolean;
+  inAppEnabled: boolean;
+  timezone: string;
+  quietHours: any; // JSON
+}
+
+// Zod Schemas
+export const insertMaintenancePlanSchema = z.object({
+  ownerUserId: z.string().nullable().optional(),
+  name: z.string().min(1, "Plan name is required"),
+  description: z.string().default(""),
+  isTemplate: z.boolean().default(false),
+  cadenceType: z.enum(["trackday", "time_interval", "odometer", "engine_hours"]),
+  cadenceConfig: cadenceConfigSchema.default({}),
+});
+
+export type InsertMaintenancePlan = z.infer<typeof insertMaintenancePlanSchema>;
+
+export const insertPlanChecklistItemSchema = z.object({
+  planId: z.string(),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().default(""),
+  maintenanceType: z.string().default("other"),
+  defaultDueOffset: dueOffsetSchema.default({ days: 0, trackdays: 0, odometerKm: 0 }),
+  autoCompleteMatcher: autoCompleteMatcherSchema.default({}),
+  sequence: z.number().default(0),
+  isCritical: z.boolean().default(false),
+});
+
+export type InsertPlanChecklistItem = z.infer<typeof insertPlanChecklistItemSchema>;
+
+export const insertChecklistItemPartSchema = z.object({
+  checklistItemId: z.string(),
+  name: z.string().min(1, "Part name is required"),
+  quantity: z.number().default(1),
+  unit: z.string().default("pcs"),
+  notes: z.string().default(""),
+  isTool: z.boolean().default(false),
+});
+
+export type InsertChecklistItemPart = z.infer<typeof insertChecklistItemPartSchema>;
+
+export const insertVehiclePlanSchema = z.object({
+  vehicleId: z.string(),
+  planId: z.string(),
+  activationDate: z.string(),
+  odometerAtActivation: z.number().nullable().optional(),
+  engineHoursAtActivation: z.number().nullable().optional(),
+  timezone: z.string().default("UTC"),
+  status: z.enum(["active", "paused"]).default("active"),
+  metadata: z.any().default({}),
+});
+
+export type InsertVehiclePlan = z.infer<typeof insertVehiclePlanSchema>;
+
+export const insertMaintenanceTaskSchema = z.object({
+  vehiclePlanId: z.string(),
+  checklistItemId: z.string().nullable().optional(),
+  customTitle: z.string().nullable().optional(),
+  notes: z.string().default(""),
+  dueAt: z.date().or(z.string()),
+  windowStart: z.date().or(z.string()).nullable().optional(),
+  status: z.enum(["pending", "due", "snoozed", "completed", "dismissed"]).default("pending"),
+  snoozedUntil: z.date().or(z.string()).nullable().optional(),
+  triggerContext: z.any().default({}),
+  hashId: z.string().nullable().optional(),
+});
+
+export type InsertMaintenanceTask = z.infer<typeof insertMaintenanceTaskSchema>;
+
+export const insertTaskEventSchema = z.object({
+  taskId: z.string(),
+  type: z.enum(["status_change", "notification_sent", "triggered"]),
+  payload: z.any().default({}),
+});
+
+export type InsertTaskEvent = z.infer<typeof insertTaskEventSchema>;
+
+export const insertNotificationPreferencesSchema = z.object({
+  userId: z.string(),
+  emailEnabled: z.boolean().default(true),
+  inAppEnabled: z.boolean().default(true),
+  timezone: z.string().default("UTC"),
+  quietHours: z.any().default({}),
+});
+
+export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
+
+// Tables
+export const maintenancePlans = pgTable("maintenance_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description").notNull().default(""),
+  isTemplate: boolean("is_template").notNull().default(false),
+  cadenceType: varchar("cadence_type", { length: 50 }).notNull(),
+  cadenceConfig: jsonb("cadence_config").notNull().default('{}'),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const planChecklistItems = pgTable("plan_checklist_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  planId: varchar("plan_id").notNull().references(() => maintenancePlans.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull().default(""),
+  maintenanceType: varchar("maintenance_type", { length: 50 }).notNull(),
+  defaultDueOffset: jsonb("default_due_offset").notNull().default('{}'),
+  autoCompleteMatcher: jsonb("auto_complete_matcher").notNull().default('{}'),
+  sequence: integer("sequence").notNull().default(0),
+  isCritical: boolean("is_critical").notNull().default(false),
+});
+
+export const checklistItemParts = pgTable("checklist_item_parts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  checklistItemId: varchar("checklist_item_id").notNull().references(() => planChecklistItems.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unit: varchar("unit", { length: 50 }).notNull().default("pcs"),
+  notes: text("notes").notNull().default(""),
+  isTool: boolean("is_tool").notNull().default(false),
+});
+
+export const vehiclePlans = pgTable(
+  "vehicle_plans",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+    planId: varchar("plan_id").notNull().references(() => maintenancePlans.id, { onDelete: "cascade" }),
+    activationDate: varchar("activation_date", { length: 20 }).notNull(),
+    odometerAtActivation: integer("odometer_at_activation"),
+    engineHoursAtActivation: real("engine_hours_at_activation"),
+    timezone: varchar("timezone", { length: 100 }).notNull().default("UTC"),
+    status: varchar("status", { length: 20 }).notNull().default("active"),
+    metadata: jsonb("metadata").notNull().default('{}'),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("IDX_vehicle_plans_vehicle_status").on(table.vehicleId, table.status)],
+);
+
+export const maintenanceTasks = pgTable(
+  "maintenance_tasks",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    vehiclePlanId: varchar("vehicle_plan_id").notNull().references(() => vehiclePlans.id, { onDelete: "cascade" }),
+    checklistItemId: varchar("checklist_item_id").references(() => planChecklistItems.id, { onDelete: "set null" }),
+    customTitle: varchar("custom_title", { length: 255 }),
+    notes: text("notes").notNull().default(""),
+    dueAt: timestamp("due_at").notNull(),
+    windowStart: timestamp("window_start"),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    snoozedUntil: timestamp("snoozed_until"),
+    completedAt: timestamp("completed_at"),
+    dismissedAt: timestamp("dismissed_at"),
+    completionSource: varchar("completion_source", { length: 20 }),
+    maintenanceLogId: varchar("maintenance_log_id").references(() => maintenanceLogs.id, { onDelete: "set null" }),
+    lastNotificationAt: timestamp("last_notification_at"),
+    triggerContext: jsonb("trigger_context").notNull().default('{}'),
+    hashId: varchar("hash_id").unique(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("IDX_maintenance_tasks_plan_status_due").on(table.vehiclePlanId, table.status, table.dueAt),
+    index("IDX_maintenance_tasks_hash").on(table.hashId),
+  ],
+);
+
+export const taskEvents = pgTable(
+  "task_events",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    taskId: varchar("task_id").notNull().references(() => maintenanceTasks.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 50 }).notNull(),
+    payload: jsonb("payload").notNull().default('{}'),
+    occurredAt: timestamp("occurred_at").defaultNow().notNull(),
+  },
+  (table) => [index("IDX_task_events_task_occurred").on(table.taskId, table.occurredAt)],
+);
+
+export const packingLists = pgTable("packing_lists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vehiclePlanId: varchar("vehicle_plan_id").notNull().references(() => vehiclePlans.id, { onDelete: "cascade" }),
+  checklistItemId: varchar("checklist_item_id").references(() => planChecklistItems.id, { onDelete: "set null" }),
+  source: varchar("source", { length: 20 }).notNull(),
+  generatedForTrackdayId: varchar("generated_for_trackday_id").references(() => trackdays.id, { onDelete: "cascade" }),
+  exportedAt: timestamp("exported_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").unique().notNull().references(() => users.id, { onDelete: "cascade" }),
+  emailEnabled: boolean("email_enabled").notNull().default(true),
+  inAppEnabled: boolean("in_app_enabled").notNull().default(true),
+  timezone: varchar("timezone", { length: 100 }).notNull().default("UTC"),
+  quietHours: jsonb("quiet_hours").notNull().default('{}'),
 });
 
 // ============= AUTHENTICATION =============
