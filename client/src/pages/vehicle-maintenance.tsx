@@ -151,13 +151,13 @@ export default function VehicleMaintenance() {
     const config = plan.cadenceConfig as any;
     switch (plan.cadenceType) {
       case "trackday":
-        return `Every ${config.afterEveryN || 1} trackday${config.afterEveryN > 1 ? "s" : ""}`;
+        return `Every ${config.trackday?.afterEveryN || 1} trackday${(config.trackday?.afterEveryN || 1) > 1 ? "s" : ""}`;
       case "time_interval":
-        return `Every ${config.intervalDays || 1} day${config.intervalDays > 1 ? "s" : ""}`;
+        return `Every ${config.time_interval?.intervalDays || 1} day${(config.time_interval?.intervalDays || 1) > 1 ? "s" : ""}`;
       case "odometer":
-        return `Every ${config.milesInterval || config.kilometersInterval || 0} ${config.unit || "km"}`;
+        return `Every ${config.odometer?.intervalKm || 0} km`;
       case "engine_hours":
-        return `Every ${config.hoursInterval || 0} engine hours`;
+        return `Every ${config.engine_hours?.intervalHours || 0} engine hours`;
       default:
         return plan.cadenceType;
     }
@@ -350,7 +350,7 @@ export default function VehicleMaintenance() {
             <DialogHeader>
               <DialogTitle>Assign Maintenance Plan</DialogTitle>
               <DialogDescription>
-                Assign "{selectedPlan?.name}" to {vehicle.name}
+                Assign "{selectedPlan?.name}" to {vehicle?.name}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
