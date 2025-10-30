@@ -106,6 +106,11 @@ const adminMenuItems = [
     url: "/admin/users",
     icon: Shield,
   },
+  {
+    title: "Data Management",
+    url: "/admin/data",
+    icon: Shield,
+  },
 ];
 
 export function AppSidebar() {

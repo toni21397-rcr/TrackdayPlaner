@@ -25,6 +25,7 @@ import MaintenancePlans from "@/pages/maintenance-plans";
 import MaintenancePlanDetail from "@/pages/maintenance-plan-detail";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminUsers from "@/pages/admin-users";
+import AdminDataManagement from "@/pages/admin-data-management";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/settings" component={SettingsPage} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/users" component={AdminUsers} />
+      <Route path="/admin/data" component={AdminDataManagement} />
       <Route path="/admin/tracks" component={Tracks} />
       <Route path="/admin/organizers" component={Organizers} />
       <Route component={NotFound} />
