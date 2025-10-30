@@ -64,7 +64,7 @@ const MOTORCYCLE_MODELS = [
   "MV Agusta F3 675", "MV Agusta F3 800", "Ducati 748", "Ducati 749", "Ducati 848",
   "Ducati 899", "Ducati 959", "Yamaha YZF600R Thundercat", "Honda CBR600F",
   "Suzuki GSX-R750", "Kawasaki ZX-7R", "Yamaha FZ6", "Aprilia RS 660",
-  "Honda VFR750R RC30", "Ducati 916", "Ducati 996", "Ducati 998", "Suzuki SV650",
+  "Honda VFR750R RC30", "Ducati 916", "Ducati 996", "Suzuki SV650",
   "KTM 690 Duke R", "Aprilia Falco SL1000", "Honda VFR800", "Yamaha R3",
   "Kawasaki Ninja 400", "KTM RC 390", "Honda CBR500R", "Suzuki GS500F",
   "Aprilia RS 250", "Honda NSR250", "Yamaha TZR250", "Suzuki RGV250",
@@ -101,6 +101,16 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
     },
   });
 
+  // Reset form and search state when dialog closes
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      form.reset();
+      setModelSearch("");
+      setModelSearchOpen(false);
+    }
+    onOpenChange(isOpen);
+  };
+
   // Filter motorcycle models based on search
   const filteredModels = MOTORCYCLE_MODELS.filter((model) => {
     if (!modelSearch) return true;
@@ -120,8 +130,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
         title: vehicle ? "Vehicle updated" : "Vehicle created",
         description: "Your vehicle has been saved successfully.",
       });
-      onOpenChange(false);
-      form.reset();
+      handleOpenChange(false);
     },
     onError: () => {
       toast({
@@ -137,7 +146,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
   const isCustom = selectedValue && !MOTORCYCLE_MODELS.includes(selectedValue);
   
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{vehicle ? "Edit Vehicle" : "Add Vehicle"}</DialogTitle>
@@ -196,7 +205,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
                               </CommandItem>
                             </CommandGroup>
                           )}
-                          {filteredModels.length > 0 ? (
+                          {filteredModels.length > 0 && (
                             <CommandGroup heading="Predefined Models">
                               {filteredModels.map((model) => (
                                 <CommandItem
@@ -219,8 +228,9 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
                                 </CommandItem>
                               ))}
                             </CommandGroup>
-                          ) : (
-                            !modelSearch && <CommandEmpty>Start typing to search or enter a custom name</CommandEmpty>
+                          )}
+                          {filteredModels.length === 0 && !modelSearch && (
+                            <CommandEmpty>Start typing to search or enter a custom name</CommandEmpty>
                           )}
                         </CommandList>
                       </Command>
@@ -278,7 +288,7 @@ export function VehicleDialog({ open, onOpenChange, vehicle }: VehicleDialogProp
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
                 data-testid="button-cancel"
               >
                 Cancel
