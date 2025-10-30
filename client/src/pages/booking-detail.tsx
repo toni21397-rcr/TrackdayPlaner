@@ -1,18 +1,32 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useRoute, Link } from "wouter";
-import { ArrowLeft, ExternalLink, AlertTriangle, Calendar, Mail, Phone } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useRoute, Link, useLocation } from "wouter";
+import { ArrowLeft, ExternalLink, AlertTriangle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import type { Organizer } from "@shared/schema";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Separator } from "@/components/ui/separator";
+import type { Organizer, Track, Vehicle, InsertTrackday } from "@shared/schema";
+import { insertTrackdaySchema } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function BookingDetail() {
   const [, params] = useRoute("/booking/:organizerId");
   const organizerId = params?.organizerId;
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
+  const [entryFeeDisplay, setEntryFeeDisplay] = useState("");
 
   const { data: organizer, isLoading: organizerLoading } = useQuery<Organizer>({
     queryKey: ["/api/organizers", organizerId],
@@ -23,6 +37,83 @@ export default function BookingDetail() {
     },
     enabled: !!organizerId,
   });
+
+  // Fetch tracks associated with this organizer
+  const { data: tracks } = useQuery<Track[]>({
+    queryKey: ["/api/tracks"],
+  });
+
+  // Filter tracks by organizer
+  const organizerTracks = tracks?.filter(track => track.organizerId === organizerId) || [];
+
+  // Fetch vehicles
+  const { data: vehicles } = useQuery<Vehicle[]>({
+    queryKey: ["/api/vehicles"],
+  });
+
+  // Form schema with entry fee
+  const formSchema = insertTrackdaySchema.extend({
+    entryFeeCents: z.number().min(0).optional(),
+  });
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      trackId: "",
+      date: "",
+      durationDays: 1,
+      vehicleId: null,
+      participationStatus: "planned",
+      notes: "",
+      entryFeeCents: undefined,
+    },
+  });
+
+  // Create trackday mutation
+  const createTrackdayMutation = useMutation({
+    mutationFn: async (data: InsertTrackday & { entryFeeCents?: number }) => {
+      const { entryFeeCents, ...trackdayData } = data;
+      const createdRes = await apiRequest("POST", "/api/trackdays", trackdayData);
+      const trackday = await createdRes.json();
+
+      // If entry fee provided, create cost item
+      if (entryFeeCents && entryFeeCents > 0 && trackday?.id) {
+        await apiRequest("POST", "/api/cost-items", {
+          trackdayId: trackday.id,
+          type: "entry",
+          amountCents: entryFeeCents,
+          currency: "CHF",
+          status: "planned",
+          notes: "Entry fee",
+        });
+      }
+
+      return trackday;
+    },
+    onSuccess: (trackday) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/trackdays"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cost-items"] });
+      toast({
+        title: "Success",
+        description: "Trackday created successfully!",
+      });
+      form.reset();
+      setEntryFeeDisplay("");
+      // Navigate to the trackday detail page
+      setLocation(`/trackdays/${trackday.id}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create trackday",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    createTrackdayMutation.mutate(data);
+  };
 
   // Detect iframe loading failures
   const handleIframeLoad = () => {
@@ -127,60 +218,201 @@ export default function BookingDetail() {
           </div>
         </div>
 
-        {/* Right: Contact Info Sidebar */}
+        {/* Right: Quick Create Trackday Form */}
         <div className="w-full md:w-96 border-l bg-muted/30 overflow-auto">
-          <div className="p-6 space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold mb-1">Contact Information</h2>
-              <p className="text-sm text-muted-foreground">
-                Use these details to get in touch with the organizer
-              </p>
-            </div>
+          <div className="p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Quick Create Trackday
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    {/* Track Selection */}
+                    <FormField
+                      control={form.control}
+                      name="trackId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Track</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-track">
+                                <SelectValue placeholder="Select a track" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {organizerTracks.length === 0 ? (
+                                <div className="p-2 text-sm text-muted-foreground">
+                                  No tracks for this organizer
+                                </div>
+                              ) : (
+                                organizerTracks.map((track) => (
+                                  <SelectItem key={track.id} value={track.id}>
+                                    {track.name}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-            <div className="space-y-4">
-              {organizer.contactEmail && (
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <Mail className="w-4 h-4" />
-                    <span className="font-medium">Email</span>
-                  </div>
-                  <a 
-                    href={`mailto:${organizer.contactEmail}`}
-                    className="text-sm text-primary hover:underline block"
-                  >
-                    {organizer.contactEmail}
-                  </a>
-                </div>
-              )}
+                    {/* Date */}
+                    <FormField
+                      control={form.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} data-testid="input-date" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              {organizer.contactPhone && (
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                    <Phone className="w-4 h-4" />
-                    <span className="font-medium">Phone</span>
-                  </div>
-                  <a 
-                    href={`tel:${organizer.contactPhone}`}
-                    className="text-sm text-primary hover:underline block"
-                  >
-                    {organizer.contactPhone}
-                  </a>
-                </div>
-              )}
-            </div>
+                    {/* Duration */}
+                    <FormField
+                      control={form.control}
+                      name="durationDays"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Duration (days)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              data-testid="input-duration"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-            <Card className="bg-primary/10 border-primary/20">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-2">
-                  <Calendar className="w-5 h-5 text-primary mt-0.5" />
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-sm">Manual Booking</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Browse events on the organizer's website, then create trackdays manually 
-                      by going to the <Link href="/trackdays" className="text-primary hover:underline">Trackdays page</Link>.
-                    </p>
-                  </div>
-                </div>
+                    {/* Vehicle */}
+                    <FormField
+                      control={form.control}
+                      name="vehicleId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vehicle (optional)</FormLabel>
+                          <Select
+                            onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                            value={field.value || "none"}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-vehicle">
+                                <SelectValue placeholder="Select a vehicle" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {vehicles?.map((vehicle) => (
+                                <SelectItem key={vehicle.id} value={vehicle.id}>
+                                  {vehicle.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Status */}
+                    <FormField
+                      control={form.control}
+                      name="participationStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-participation-status">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="planned">Planned</SelectItem>
+                              <SelectItem value="registered">Registered</SelectItem>
+                              <SelectItem value="attended">Attended</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Entry Fee */}
+                    <FormField
+                      control={form.control}
+                      name="entryFeeCents"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Entry Fee (CHF)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              step="0.01"
+                              value={entryFeeDisplay}
+                              onChange={(e) => {
+                                setEntryFeeDisplay(e.target.value);
+                              }}
+                              onBlur={() => {
+                                const value = entryFeeDisplay ? Math.round(parseFloat(entryFeeDisplay) * 100) : undefined;
+                                field.onChange(value);
+                              }}
+                              data-testid="input-entry-fee"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Notes */}
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notes</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              placeholder="Add any notes..."
+                              rows={3}
+                              data-testid="input-notes"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Separator />
+
+                    <Button 
+                      type="submit" 
+                      className="w-full"
+                      disabled={createTrackdayMutation.isPending}
+                      data-testid="button-create-trackday"
+                    >
+                      {createTrackdayMutation.isPending ? "Creating..." : "Create Trackday"}
+                    </Button>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
           </div>
