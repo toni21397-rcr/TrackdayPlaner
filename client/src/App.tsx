@@ -15,6 +15,7 @@ import Tracks from "@/pages/tracks";
 import Vehicles from "@/pages/vehicles";
 import VehicleMaintenance from "@/pages/vehicle-maintenance";
 import MaintenanceTasks from "@/pages/maintenance-tasks";
+import MaintenanceAnalytics from "@/pages/maintenance-analytics";
 import MapPage from "@/pages/map";
 import SettingsPage from "@/pages/settings";
 import Booking from "@/pages/booking";
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/vehicles/:id/maintenance" component={VehicleMaintenance} />
       <Route path="/maintenance-plans" component={MaintenancePlans} />
       <Route path="/maintenance-tasks" component={MaintenanceTasks} />
+      <Route path="/maintenance-analytics" component={MaintenanceAnalytics} />
       <Route path="/booking" component={Booking} />
       <Route path="/booking/:trackId" component={BookingDetail} />
       <Route path="/map" component={MapPage} />

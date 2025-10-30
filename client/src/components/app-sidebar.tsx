@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ListChecks,
   ClipboardCheck,
+  BarChart3,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -64,6 +65,11 @@ const mainMenuItems = [
     title: "Maintenance Tasks",
     url: "/maintenance-tasks",
     icon: ClipboardCheck,
+  },
+  {
+    title: "Maintenance Analytics",
+    url: "/maintenance-analytics",
+    icon: BarChart3,
   },
   {
     title: "My Map",
