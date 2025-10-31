@@ -188,8 +188,8 @@ export default function BookingDetail() {
       {/* Split View */}
       <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
         {/* Left: Iframe */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full">
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-hidden">
             {iframeBlocked ? (
               <div className="h-full flex items-center justify-center p-8">
                 <div className="text-center space-y-4">
@@ -227,6 +227,26 @@ export default function BookingDetail() {
               </div>
             )}
           </div>
+          
+          {/* Fallback Section - Always Visible */}
+          {!iframeBlocked && (
+            <div className="shrink-0 border-t bg-muted/50 p-3">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <p className="text-sm text-muted-foreground">
+                    Website not loading or blocked by your browser?
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" asChild data-testid="button-fallback-open-tab">
+                  <a href={organizer.website} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Website Directly
+                  </a>
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Quick Create Trackday Form */}
