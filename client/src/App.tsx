@@ -23,6 +23,8 @@ import BookingDetail from "@/pages/booking-detail";
 import Organizers from "@/pages/organizers";
 import MaintenancePlans from "@/pages/maintenance-plans";
 import MaintenancePlanDetail from "@/pages/maintenance-plan-detail";
+import Marketplace from "@/pages/marketplace";
+import MarketplaceDetail from "@/pages/marketplace-detail";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminUsers from "@/pages/admin-users";
 import AdminDataManagement from "@/pages/admin-data-management";
@@ -44,6 +46,8 @@ function Router() {
       <Route path="/maintenance-analytics" component={MaintenanceAnalytics} />
       <Route path="/booking" component={Booking} />
       <Route path="/booking/:trackId" component={BookingDetail} />
+      <Route path="/marketplace" component={Marketplace} />
+      <Route path="/marketplace/:id" component={MarketplaceDetail} />
       <Route path="/map" component={MapPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/admin" component={AdminDashboard} />

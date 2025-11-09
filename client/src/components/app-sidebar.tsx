@@ -13,6 +13,7 @@ import {
   ClipboardCheck,
   BarChart3,
   Wrench,
+  Package,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -56,6 +57,11 @@ const mainMenuItems = [
     title: "My Bike",
     url: "/vehicles",
     icon: Car,
+  },
+  {
+    title: "Marketplace",
+    url: "/marketplace",
+    icon: Package,
   },
   {
     title: "My Map",
