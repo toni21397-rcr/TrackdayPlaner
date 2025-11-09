@@ -65,7 +65,7 @@ export interface IStorage {
   deleteTrack(id: string): Promise<boolean>;
 
   // Trackdays
-  getTrackdays(filters?: { year?: string; participationStatus?: string }): Promise<Trackday[]>;
+  getTrackdays(filters?: { year?: string; participationStatus?: string; offset?: number; limit?: number }): Promise<{ items: Trackday[]; total: number }>;
   getTrackday(id: string): Promise<Trackday | undefined>;
   getUpcomingTrackdays(limit?: number): Promise<Trackday[]>;
   createTrackday(data: InsertTrackday): Promise<Trackday>;
@@ -81,7 +81,7 @@ export interface IStorage {
 
   // Vehicles
   getVehicles(): Promise<Vehicle[]>;
-  getVehiclesByUserId(userId: string): Promise<Vehicle[]>;
+  getVehiclesByUserId(userId: string, pagination?: { offset?: number; limit?: number }): Promise<{ items: Vehicle[]; total: number }>;
   getVehicle(id: string): Promise<Vehicle | undefined>;
   createVehicle(data: InsertVehicle): Promise<Vehicle>;
   updateVehicle(id: string, data: InsertVehicle): Promise<Vehicle | undefined>;
@@ -143,7 +143,7 @@ export interface IStorage {
   deleteVehiclePlan(id: string): Promise<boolean>;
 
   // Maintenance Tasks
-  getMaintenanceTasks(filters?: { vehiclePlanId?: string; status?: string; vehicleId?: string }): Promise<MaintenanceTask[]>;
+  getMaintenanceTasks(filters?: { vehiclePlanId?: string; status?: string; vehicleId?: string; offset?: number; limit?: number }): Promise<{ items: MaintenanceTask[]; total: number }>;
   getMaintenanceTask(id: string): Promise<MaintenanceTask | undefined>;
   createMaintenanceTask(data: InsertMaintenanceTask): Promise<MaintenanceTask>;
   updateMaintenanceTask(id: string, data: Partial<MaintenanceTask>): Promise<MaintenanceTask | undefined>;
@@ -344,7 +344,7 @@ export class MemStorage implements IStorage {
   }
 
   // ========== TRACKDAYS ==========
-  async getTrackdays(filters?: { year?: string; participationStatus?: string }): Promise<Trackday[]> {
+  async getTrackdays(filters?: { year?: string; participationStatus?: string; offset?: number; limit?: number }): Promise<{ items: Trackday[]; total: number }> {
     let trackdays = Array.from(this.trackdays.values());
     
     if (filters?.year && filters.year !== "all") {
@@ -355,7 +355,14 @@ export class MemStorage implements IStorage {
       trackdays = trackdays.filter(td => td.participationStatus === filters.participationStatus);
     }
     
-    return trackdays.sort((a, b) => b.date.localeCompare(a.date));
+    trackdays.sort((a, b) => b.date.localeCompare(a.date));
+    
+    const total = trackdays.length;
+    const offset = filters?.offset ?? 0;
+    const limit = filters?.limit ?? 50;
+    const items = trackdays.slice(offset, offset + limit);
+    
+    return { items, total };
   }
 
   async getTrackday(id: string): Promise<Trackday | undefined> {
@@ -442,8 +449,14 @@ export class MemStorage implements IStorage {
     return Array.from(this.vehicles.values());
   }
 
-  async getVehiclesByUserId(userId: string): Promise<Vehicle[]> {
-    return Array.from(this.vehicles.values()).filter(v => v.userId === userId);
+  async getVehiclesByUserId(userId: string, pagination?: { offset?: number; limit?: number }): Promise<{ items: Vehicle[]; total: number }> {
+    const filtered = Array.from(this.vehicles.values()).filter(v => v.userId === userId);
+    const total = filtered.length;
+    const offset = pagination?.offset ?? 0;
+    const limit = pagination?.limit ?? 50;
+    const items = filtered.slice(offset, offset + limit);
+    
+    return { items, total };
   }
 
   async getVehicle(id: string): Promise<Vehicle | undefined> {
@@ -732,9 +745,8 @@ export class DbStorage implements IStorage {
   }
 
   // ========== TRACKDAYS ==========
-  async getTrackdays(filters?: { year?: string; participationStatus?: string }): Promise<Trackday[]> {
+  async getTrackdays(filters?: { year?: string; participationStatus?: string; offset?: number; limit?: number }): Promise<{ items: Trackday[]; total: number }> {
     await this.ensureInitialized();
-    let query = this.db.select().from(trackdays);
     
     const conditions = [];
     if (filters?.year && filters.year !== "all") {
@@ -744,12 +756,29 @@ export class DbStorage implements IStorage {
       conditions.push(eq(trackdays.participationStatus, filters.participationStatus));
     }
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [countResult] = await this.db
+      .select({ count: count() })
+      .from(trackdays)
+      .where(whereClause);
+    
+    let query = this.db.select().from(trackdays);
+    if (whereClause) {
+      query = query.where(whereClause);
     }
     
+    const offset = filters?.offset ?? 0;
+    const limit = filters?.limit ?? 50;
+    
+    query = query.orderBy(desc(trackdays.date)).limit(limit).offset(offset);
+    
     const result = await query;
-    return result.sort((a, b) => b.date.localeCompare(a.date)) as Trackday[];
+    
+    return {
+      items: result as Trackday[],
+      total: Number(countResult.count),
+    };
   }
 
   async getTrackday(id: string): Promise<Trackday | undefined> {
@@ -832,9 +861,28 @@ export class DbStorage implements IStorage {
     return await this.db.select().from(vehicles) as Vehicle[];
   }
 
-  async getVehiclesByUserId(userId: string): Promise<Vehicle[]> {
+  async getVehiclesByUserId(userId: string, pagination?: { offset?: number; limit?: number }): Promise<{ items: Vehicle[]; total: number }> {
     await this.ensureInitialized();
-    return await this.db.select().from(vehicles).where(eq(vehicles.userId, userId)) as Vehicle[];
+    
+    const [countResult] = await this.db
+      .select({ count: count() })
+      .from(vehicles)
+      .where(eq(vehicles.userId, userId));
+    
+    const offset = pagination?.offset ?? 0;
+    const limit = pagination?.limit ?? 50;
+    
+    const items = await this.db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.userId, userId))
+      .limit(limit)
+      .offset(offset);
+    
+    return {
+      items: items as Vehicle[],
+      total: Number(countResult.count),
+    };
   }
 
   async getVehicle(id: string): Promise<Vehicle | undefined> {
@@ -1141,37 +1189,52 @@ export class DbStorage implements IStorage {
   }
 
   // ========== MAINTENANCE TASKS ==========
-  async getMaintenanceTasks(filters?: { vehiclePlanId?: string; status?: string; vehicleId?: string }): Promise<MaintenanceTask[]> {
+  async getMaintenanceTasks(filters?: { vehiclePlanId?: string; status?: string; vehicleId?: string; offset?: number; limit?: number }): Promise<{ items: MaintenanceTask[]; total: number }> {
     await this.ensureInitialized();
+    
+    const conditions = [];
     
     if (filters?.vehicleId) {
       const plans = await this.db.select().from(vehiclePlans).where(eq(vehiclePlans.vehicleId, filters.vehicleId));
       const vehiclePlanIds = plans.map(vp => vp.id);
       
       if (vehiclePlanIds.length === 0) {
-        return [];
+        return { items: [], total: 0 };
       }
       
-      const tasks = await this.db.select().from(maintenanceTasks).where(inArray(maintenanceTasks.vehiclePlanId, vehiclePlanIds));
-      
-      let filtered = tasks;
-      if (filters?.status) {
-        filtered = tasks.filter(t => t.status === filters.status);
-      }
-      
-      return filtered.sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()) as MaintenanceTask[];
+      conditions.push(inArray(maintenanceTasks.vehiclePlanId, vehiclePlanIds));
     }
-    
-    let query = this.db.select().from(maintenanceTasks);
     
     if (filters?.vehiclePlanId) {
-      query = query.where(eq(maintenanceTasks.vehiclePlanId, filters.vehiclePlanId)) as any;
+      conditions.push(eq(maintenanceTasks.vehiclePlanId, filters.vehiclePlanId));
     }
     if (filters?.status) {
-      query = query.where(eq(maintenanceTasks.status, filters.status)) as any;
+      conditions.push(eq(maintenanceTasks.status, filters.status));
     }
     
-    return (await query).sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()) as MaintenanceTask[];
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [countResult] = await this.db
+      .select({ count: count() })
+      .from(maintenanceTasks)
+      .where(whereClause);
+    
+    const offset = filters?.offset ?? 0;
+    const limit = filters?.limit ?? 50;
+    
+    let query = this.db.select().from(maintenanceTasks);
+    if (whereClause) {
+      query = query.where(whereClause);
+    }
+    
+    query = query.orderBy(asc(maintenanceTasks.dueAt)).limit(limit).offset(offset);
+    
+    const items = await query;
+    
+    return {
+      items: items as MaintenanceTask[],
+      total: Number(countResult.count),
+    };
   }
 
   async getMaintenanceTask(id: string): Promise<MaintenanceTask | undefined> {

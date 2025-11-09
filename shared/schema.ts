@@ -448,63 +448,91 @@ export const organizers = pgTable("organizers", {
   createdBy: varchar("created_by"), // null = system/admin created, otherwise user ID
 });
 
-export const tracks = pgTable("tracks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name", { length: 255 }).notNull(),
-  country: varchar("country", { length: 100 }).notNull(),
-  lat: real("lat").notNull(),
-  lng: real("lng").notNull(),
-  organizerId: varchar("organizer_id").references(() => organizers.id, { onDelete: "set null" }),
-  organizerName: text("organizer_name").notNull().default(""),
-  organizerWebsite: text("organizer_website").notNull().default(""),
-  createdBy: varchar("created_by"), // null = system/admin created, otherwise user ID
-  // Track details for info panel
-  summary: text("summary").notNull().default(""),
-  lengthKm: real("length_km"),
-  turns: integer("turns"),
-  surface: varchar("surface", { length: 50 }).notNull().default(""),
-  difficulty: varchar("difficulty", { length: 50 }).notNull().default(""),
-  facilities: text("facilities").array().notNull().default(sql`ARRAY[]::text[]`),
-  tips: text("tips").array().notNull().default(sql`ARRAY[]::text[]`),
-});
+export const tracks = pgTable(
+  "tracks",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    name: varchar("name", { length: 255 }).notNull(),
+    country: varchar("country", { length: 100 }).notNull(),
+    lat: real("lat").notNull(),
+    lng: real("lng").notNull(),
+    organizerId: varchar("organizer_id").references(() => organizers.id, { onDelete: "set null" }),
+    organizerName: text("organizer_name").notNull().default(""),
+    organizerWebsite: text("organizer_website").notNull().default(""),
+    createdBy: varchar("created_by"),
+    summary: text("summary").notNull().default(""),
+    lengthKm: real("length_km"),
+    turns: integer("turns"),
+    surface: varchar("surface", { length: 50 }).notNull().default(""),
+    difficulty: varchar("difficulty", { length: 50 }).notNull().default(""),
+    facilities: text("facilities").array().notNull().default(sql`ARRAY[]::text[]`),
+    tips: text("tips").array().notNull().default(sql`ARRAY[]::text[]`),
+  },
+  (table) => [
+    index("IDX_tracks_organizer").on(table.organizerId),
+    index("IDX_tracks_country").on(table.country),
+  ],
+);
 
-export const trackdays = pgTable("trackdays", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  trackId: varchar("track_id").notNull().references(() => tracks.id, { onDelete: "cascade" }),
-  date: varchar("date", { length: 20 }).notNull(),
-  durationDays: integer("duration_days").notNull().default(1),
-  vehicleId: varchar("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
-  notes: text("notes").notNull().default(""),
-  participationStatus: varchar("participation_status", { length: 20 }).notNull().default("planned"),
-  routeDistance: real("route_distance"),
-  routeDuration: real("route_duration"),
-  routeFuelCost: integer("route_fuel_cost"),
-  routeTollsCost: integer("route_tolls_cost"),
-  routeGeometry: text("route_geometry"),
-});
+export const trackdays = pgTable(
+  "trackdays",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    trackId: varchar("track_id").notNull().references(() => tracks.id, { onDelete: "cascade" }),
+    date: varchar("date", { length: 20 }).notNull(),
+    durationDays: integer("duration_days").notNull().default(1),
+    vehicleId: varchar("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
+    notes: text("notes").notNull().default(""),
+    participationStatus: varchar("participation_status", { length: 20 }).notNull().default("planned"),
+    routeDistance: real("route_distance"),
+    routeDuration: real("route_duration"),
+    routeFuelCost: integer("route_fuel_cost"),
+    routeTollsCost: integer("route_tolls_cost"),
+    routeGeometry: text("route_geometry"),
+  },
+  (table) => [
+    index("IDX_trackdays_track_date").on(table.trackId, table.date),
+    index("IDX_trackdays_date").on(table.date),
+    index("IDX_trackdays_vehicle").on(table.vehicleId),
+    index("IDX_trackdays_status").on(table.participationStatus),
+  ],
+);
 
-export const costItems = pgTable("cost_items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  trackdayId: varchar("trackday_id").notNull().references(() => trackdays.id, { onDelete: "cascade" }),
-  type: varchar("type", { length: 20 }).notNull(),
-  amountCents: integer("amount_cents").notNull(),
-  currency: varchar("currency", { length: 10 }).notNull().default("CHF"),
-  status: varchar("status", { length: 20 }).notNull().default("planned"),
-  dueDate: varchar("due_date", { length: 20 }),
-  paidAt: varchar("paid_at", { length: 20 }),
-  notes: text("notes").notNull().default(""),
-  isTravelAuto: boolean("is_travel_auto").notNull().default(false),
-});
+export const costItems = pgTable(
+  "cost_items",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    trackdayId: varchar("trackday_id").notNull().references(() => trackdays.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 20 }).notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    currency: varchar("currency", { length: 10 }).notNull().default("CHF"),
+    status: varchar("status", { length: 20 }).notNull().default("planned"),
+    dueDate: varchar("due_date", { length: 20 }),
+    paidAt: varchar("paid_at", { length: 20 }),
+    notes: text("notes").notNull().default(""),
+    isTravelAuto: boolean("is_travel_auto").notNull().default(false),
+  },
+  (table) => [
+    index("IDX_cost_items_trackday").on(table.trackdayId),
+    index("IDX_cost_items_type_status").on(table.type, table.status),
+  ],
+);
 
-export const vehicles = pgTable("vehicles", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  name: varchar("name", { length: 255 }).notNull(),
-  type: varchar("type", { length: 20 }).notNull(),
-  fuelType: varchar("fuel_type", { length: 20 }).notNull(),
-  consumptionPer100: real("consumption_per_100").notNull(),
-  notes: text("notes").notNull().default(""),
-});
+export const vehicles = pgTable(
+  "vehicles",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    type: varchar("type", { length: 20 }).notNull(),
+    fuelType: varchar("fuel_type", { length: 20 }).notNull(),
+    consumptionPer100: real("consumption_per_100").notNull(),
+    notes: text("notes").notNull().default(""),
+  },
+  (table) => [
+    index("IDX_vehicles_user").on(table.userId),
+  ],
+);
 
 export const motorcycleModels = pgTable("motorcycle_models", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -515,44 +543,70 @@ export const motorcycleModels = pgTable("motorcycle_models", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const maintenanceLogs = pgTable("maintenance_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
-  date: varchar("date", { length: 20 }).notNull(),
-  type: varchar("type", { length: 20 }).notNull(),
-  costCents: integer("cost_cents").notNull(),
-  odometerKm: integer("odometer_km"),
-  notes: text("notes").notNull().default(""),
-});
+export const maintenanceLogs = pgTable(
+  "maintenance_logs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id, { onDelete: "cascade" }),
+    date: varchar("date", { length: 20 }).notNull(),
+    type: varchar("type", { length: 20 }).notNull(),
+    costCents: integer("cost_cents").notNull(),
+    odometerKm: integer("odometer_km"),
+    notes: text("notes").notNull().default(""),
+  },
+  (table) => [
+    index("IDX_maintenance_logs_vehicle_date").on(table.vehicleId, table.date),
+    index("IDX_maintenance_logs_type").on(table.type),
+  ],
+);
 
-export const scheduleBlocks = pgTable("schedule_blocks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  trackdayId: varchar("trackday_id").notNull().references(() => trackdays.id, { onDelete: "cascade" }),
-  startTime: varchar("start_time", { length: 50 }).notNull(),
-  endTime: varchar("end_time", { length: 50 }).notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
-  type: varchar("type", { length: 20 }).notNull(),
-  notes: text("notes").notNull().default(""),
-});
+export const scheduleBlocks = pgTable(
+  "schedule_blocks",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    trackdayId: varchar("trackday_id").notNull().references(() => trackdays.id, { onDelete: "cascade" }),
+    startTime: varchar("start_time", { length: 50 }).notNull(),
+    endTime: varchar("end_time", { length: 50 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    type: varchar("type", { length: 20 }).notNull(),
+    notes: text("notes").notNull().default(""),
+  },
+  (table) => [
+    index("IDX_schedule_blocks_trackday").on(table.trackdayId),
+  ],
+);
 
-export const trackSessions = pgTable("track_sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  trackdayId: varchar("trackday_id").notNull().references(() => trackdays.id, { onDelete: "cascade" }),
-  name: varchar("name", { length: 255 }).notNull(),
-  startTime: varchar("start_time", { length: 50 }),
-  endTime: varchar("end_time", { length: 50 }),
-  bestLapMs: integer("best_lap_ms"),
-  notes: text("notes").notNull().default(""),
-});
+export const trackSessions = pgTable(
+  "track_sessions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    trackdayId: varchar("trackday_id").notNull().references(() => trackdays.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    startTime: varchar("start_time", { length: 50 }),
+    endTime: varchar("end_time", { length: 50 }),
+    bestLapMs: integer("best_lap_ms"),
+    notes: text("notes").notNull().default(""),
+  },
+  (table) => [
+    index("IDX_track_sessions_trackday").on(table.trackdayId),
+  ],
+);
 
-export const laps = pgTable("laps", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sessionId: varchar("session_id").notNull().references(() => trackSessions.id, { onDelete: "cascade" }),
-  lapNumber: integer("lap_number").notNull(),
-  lapTimeMs: integer("lap_time_ms").notNull(),
-  sectorTimesMsJson: text("sector_times_ms_json"),
-  valid: boolean("valid").notNull().default(true),
-});
+export const laps = pgTable(
+  "laps",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull().references(() => trackSessions.id, { onDelete: "cascade" }),
+    lapNumber: integer("lap_number").notNull(),
+    lapTimeMs: integer("lap_time_ms").notNull(),
+    sectorTimesMsJson: text("sector_times_ms_json"),
+    valid: boolean("valid").notNull().default(true),
+  },
+  (table) => [
+    index("IDX_laps_session").on(table.sessionId),
+    index("IDX_laps_session_number").on(table.sessionId, table.lapNumber),
+  ],
+);
 
 export const bookingDrafts = pgTable("booking_drafts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -575,14 +629,20 @@ export const settings = pgTable("settings", {
   googleMapsApiKey: text("google_maps_api_key").notNull().default(""),
 });
 
-export const weatherCache = pgTable("weather_cache", {
-  trackdayId: varchar("trackday_id").primaryKey().references(() => trackdays.id, { onDelete: "cascade" }),
-  fetchedAt: varchar("fetched_at", { length: 50 }).notNull(),
-  temperature: real("temperature").notNull(),
-  rainChance: integer("rain_chance").notNull(),
-  windSpeed: real("wind_speed").notNull(),
-  description: varchar("description", { length: 255 }).notNull(),
-});
+export const weatherCache = pgTable(
+  "weather_cache",
+  {
+    trackdayId: varchar("trackday_id").primaryKey().references(() => trackdays.id, { onDelete: "cascade" }),
+    fetchedAt: varchar("fetched_at", { length: 50 }).notNull(),
+    temperature: real("temperature").notNull(),
+    rainChance: integer("rain_chance").notNull(),
+    windSpeed: real("wind_speed").notNull(),
+    description: varchar("description", { length: 255 }).notNull(),
+  },
+  (table) => [
+    index("IDX_weather_cache_fetched_at").on(table.fetchedAt),
+  ],
+);
 
 // ============= MAINTENANCE PLANNING =============
 // Interfaces
@@ -764,39 +824,58 @@ export const insertNotificationPreferencesSchema = z.object({
 export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
 
 // Tables
-export const maintenancePlans = pgTable("maintenance_plans", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description").notNull().default(""),
-  isTemplate: boolean("is_template").notNull().default(false),
-  cadenceType: varchar("cadence_type", { length: 50 }).notNull(),
-  cadenceConfig: jsonb("cadence_config").notNull().default('{}'),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const maintenancePlans = pgTable(
+  "maintenance_plans",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description").notNull().default(""),
+    isTemplate: boolean("is_template").notNull().default(false),
+    cadenceType: varchar("cadence_type", { length: 50 }).notNull(),
+    cadenceConfig: jsonb("cadence_config").notNull().default('{}'),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("IDX_maintenance_plans_owner").on(table.ownerUserId),
+    index("IDX_maintenance_plans_template").on(table.isTemplate),
+  ],
+);
 
-export const planChecklistItems = pgTable("plan_checklist_items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  planId: varchar("plan_id").notNull().references(() => maintenancePlans.id, { onDelete: "cascade" }),
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description").notNull().default(""),
-  maintenanceType: varchar("maintenance_type", { length: 50 }).notNull(),
-  defaultDueOffset: jsonb("default_due_offset").notNull().default('{}'),
-  autoCompleteMatcher: jsonb("auto_complete_matcher").notNull().default('{}'),
-  sequence: integer("sequence").notNull().default(0),
-  isCritical: boolean("is_critical").notNull().default(false),
-});
+export const planChecklistItems = pgTable(
+  "plan_checklist_items",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    planId: varchar("plan_id").notNull().references(() => maintenancePlans.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description").notNull().default(""),
+    maintenanceType: varchar("maintenance_type", { length: 50 }).notNull(),
+    defaultDueOffset: jsonb("default_due_offset").notNull().default('{}'),
+    autoCompleteMatcher: jsonb("auto_complete_matcher").notNull().default('{}'),
+    sequence: integer("sequence").notNull().default(0),
+    isCritical: boolean("is_critical").notNull().default(false),
+  },
+  (table) => [
+    index("IDX_plan_checklist_items_plan").on(table.planId),
+  ],
+);
 
-export const checklistItemParts = pgTable("checklist_item_parts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  checklistItemId: varchar("checklist_item_id").notNull().references(() => planChecklistItems.id, { onDelete: "cascade" }),
-  name: varchar("name", { length: 255 }).notNull(),
-  quantity: integer("quantity").notNull().default(1),
-  unit: varchar("unit", { length: 50 }).notNull().default("pcs"),
-  notes: text("notes").notNull().default(""),
-  isTool: boolean("is_tool").notNull().default(false),
-});
+export const checklistItemParts = pgTable(
+  "checklist_item_parts",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    checklistItemId: varchar("checklist_item_id").notNull().references(() => planChecklistItems.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    unit: varchar("unit", { length: 50 }).notNull().default("pcs"),
+    notes: text("notes").notNull().default(""),
+    isTool: boolean("is_tool").notNull().default(false),
+  },
+  (table) => [
+    index("IDX_checklist_item_parts_item").on(table.checklistItemId),
+  ],
+);
 
 export const vehiclePlans = pgTable(
   "vehicle_plans",
