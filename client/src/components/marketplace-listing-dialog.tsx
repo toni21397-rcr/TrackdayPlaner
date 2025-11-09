@@ -24,6 +24,10 @@ import { insertMarketplaceListingSchema, type InsertMarketplaceListing } from "@
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { z } from "zod";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
+import { ImageIcon, X } from "lucide-react";
+import { useState, useEffect } from "react";
 
 const formSchema = insertMarketplaceListingSchema.extend({
   priceCents: z.number().min(0, "Price must be positive"),
@@ -66,26 +70,97 @@ export function MarketplaceListingDialog({
   listing,
 }: MarketplaceListingDialogProps) {
   const { toast } = useToast();
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: listing?.title || "",
-      category: listing?.category || "parts_engine",
-      condition: listing?.condition || "good",
-      priceCents: listing?.priceCents || 0,
-      currency: listing?.currency || "CHF",
-      locationCity: listing?.locationCity || "",
-      locationCountry: listing?.locationCountry || "",
-      contactEmail: listing?.contactEmail || "",
-      contactPhone: listing?.contactPhone || "",
-      description: listing?.description || "",
-      images: listing?.images || [],
-      status: listing?.status || "active",
-      vehicleId: listing?.vehicleId || null,
-      sellerUserId: listing?.sellerUserId || "",
+      title: "",
+      category: "parts_engine",
+      condition: "good",
+      priceCents: 0,
+      currency: "CHF",
+      locationCity: "",
+      locationCountry: "",
+      contactEmail: "",
+      contactPhone: "",
+      description: "",
+      images: [],
+      status: "active",
+      vehicleId: null,
+      sellerUserId: "",
     },
   });
+  
+  useEffect(() => {
+    if (open) {
+      const images = listing?.images || [];
+      setUploadedImages(images);
+      form.reset({
+        title: listing?.title || "",
+        category: listing?.category || "parts_engine",
+        condition: listing?.condition || "good",
+        priceCents: listing?.priceCents || 0,
+        currency: listing?.currency || "CHF",
+        locationCity: listing?.locationCity || "",
+        locationCountry: listing?.locationCountry || "",
+        contactEmail: listing?.contactEmail || "",
+        contactPhone: listing?.contactPhone || "",
+        description: listing?.description || "",
+        images: images,
+        status: listing?.status || "active",
+        vehicleId: listing?.vehicleId || null,
+        sellerUserId: listing?.sellerUserId || "",
+      });
+    }
+  }, [open, listing, form]);
+
+  const handleGetUploadParameters = async () => {
+    const response = await fetch("/api/objects/upload", {
+      method: "POST",
+      credentials: "include",
+    });
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    const newImages: string[] = [];
+    for (const file of result.successful) {
+      if (file.uploadURL) {
+        try {
+          const response = await fetch("/api/marketplace/images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ imageURL: file.uploadURL }),
+          });
+          const data = await response.json();
+          newImages.push(data.objectPath);
+        } catch (error) {
+          console.error("Error setting ACL for image:", error);
+        }
+      }
+    }
+    
+    const updatedImages = [...uploadedImages, ...newImages];
+    setUploadedImages(updatedImages);
+    form.setValue("images", updatedImages);
+    
+    toast({
+      title: "Success",
+      description: `${newImages.length} image(s) uploaded successfully`,
+    });
+  };
+
+  const removeImage = (index: number) => {
+    const updatedImages = uploadedImages.filter((_, i) => i !== index);
+    setUploadedImages(updatedImages);
+    form.setValue("images", updatedImages);
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -338,6 +413,47 @@ export function MarketplaceListingDialog({
                   </FormItem>
                 )}
               />
+            </div>
+
+            <div className="space-y-3">
+              <FormLabel>Images (up to 5)</FormLabel>
+              
+              {uploadedImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {uploadedImages.map((imagePath, index) => (
+                    <div key={index} className="relative group" data-testid={`image-preview-${index}`}>
+                      <img
+                        src={imagePath}
+                        alt={`Upload ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        data-testid={`button-remove-image-${index}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {uploadedImages.length < 5 && (
+                <ObjectUploader
+                  maxNumberOfFiles={5 - uploadedImages.length}
+                  maxFileSize={10485760}
+                  onGetUploadParameters={handleGetUploadParameters}
+                  onComplete={handleUploadComplete}
+                  buttonClassName="w-full"
+                >
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    <span>Upload Images</span>
+                  </div>
+                </ObjectUploader>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-4">

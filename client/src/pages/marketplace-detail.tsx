@@ -1,6 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, MapPin, Calendar, Mail, Phone, Package, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Mail, Phone, Package, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ export default function MarketplaceDetail() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const { data: listing, isLoading } = useQuery<MarketplaceListing>({
     queryKey: ["/api/marketplace/listings", id],
@@ -164,6 +165,73 @@ export default function MarketplaceDetail() {
             <Badge variant="destructive">Sold</Badge>
           )}
         </div>
+
+        {/* Image Gallery */}
+        {listing.images && listing.images.length > 0 && (
+          <Card>
+            <CardContent className="p-0">
+              <div className="relative aspect-video bg-muted">
+                <img
+                  src={listing.images[currentImageIndex]}
+                  alt={`${listing.title} - Image ${currentImageIndex + 1}`}
+                  className="w-full h-full object-contain"
+                  data-testid={`image-main-${currentImageIndex}`}
+                />
+                
+                {listing.images.length > 1 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background"
+                      onClick={() => setCurrentImageIndex((prev) => 
+                        prev === 0 ? listing.images.length - 1 : prev - 1
+                      )}
+                      data-testid="button-prev-image"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background"
+                      onClick={() => setCurrentImageIndex((prev) => 
+                        prev === listing.images.length - 1 ? 0 : prev + 1
+                      )}
+                      data-testid="button-next-image"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-background/80 px-3 py-1 rounded-full text-sm">
+                      {currentImageIndex + 1} / {listing.images.length}
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {listing.images.length > 1 && (
+                <div className="flex gap-2 p-4 overflow-x-auto">
+                  {listing.images.map((image: string, index: number) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border-2 transition-colors ${
+                        index === currentImageIndex ? 'border-primary' : 'border-transparent'
+                      }`}
+                      data-testid={`button-thumbnail-${index}`}
+                    >
+                      <img
+                        src={image}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Price Card */}
         <Card>

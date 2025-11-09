@@ -2192,6 +2192,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ OBJECT STORAGE (for marketplace images) ============
+  
+  const { ObjectStorageService, ObjectNotFoundError } = await import("./objectStorage");
+  const { ObjectPermission } = await import("./objectAcl");
+
+  app.get("/objects/:objectPath(*)", async (req: any, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      
+      const userId = req.user?.claims?.sub;
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId,
+        requestedPermission: ObjectPermission.READ,
+      });
+      
+      if (!canAccess) {
+        return res.sendStatus(403);
+      }
+      
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    res.json({ uploadURL });
+  });
+
+  app.post("/api/marketplace/images", isAuthenticated, async (req: any, res) => {
+    const imageURLSchema = z.object({
+      imageURL: z.string().url("Must be a valid URL"),
+    });
+    
+    const validation = imageURLSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Validation failed", 
+        details: validation.error.errors 
+      });
+    }
+
+    const userId = req.user.claims.sub;
+    const { imageURL } = validation.data;
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        imageURL,
+        {
+          owner: userId,
+          visibility: "public",
+        }
+      );
+
+      res.status(200).json({ objectPath });
+    } catch (error) {
+      console.error("Error setting marketplace image:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
