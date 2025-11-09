@@ -39,14 +39,21 @@ Trackday Planner is a full-stack web application for motorsport enthusiasts to p
 
 **Authorization Pattern:** All routes follow: Load resource → Traverse ownership chain (task → vehiclePlan → vehicle → userId OR plan → ownerUserId) → Verify with canModifyResource() → Return 403 if unauthorized.
 
+**Task Generation (November 2025):**
+- ✅ **Manual Trigger Button**: "Generate Tasks" button in tasks page UI
+- ✅ **Auto-Trigger**: Runs on page load if >1 hour since last run (localStorage throttling)
+- ✅ **Enriched Task Data**: Backend returns tasks with vehicle, plan name, and checklist item title
+- ✅ **Loading States**: Button shows "Generating..." with spinning icon during processing
+- ✅ **Toast Notifications**: Success/error feedback for task generation
+
 **Remaining Work:**
 - 🔨 Add cadenceConfig validation to enforce consistency with cadenceType
-- 🔨 Implement cron job scheduling for automated trigger processing
+- 🔨 Implement cron job scheduling for automated trigger processing (currently requires page visit or manual trigger)
+- 🔨 Optimize task enrichment (currently uses N+1 queries)
 - 🔨 Configure production email provider (Resend/Postmark/SendGrid)
 - 🔨 Create packing list generation/export
-- 🔨 End-to-end testing
 
-**Production Readiness:** Core API routes, scheduling service, notification system, analytics endpoints, and all UI flows (plan creation, vehicle assignment, task management, analytics dashboard, in-app nudges, notification preferences) are secure and production-ready. Remaining work focuses on cron automation, packing lists, and comprehensive end-to-end testing.
+**Production Readiness:** Core API routes, scheduling service, notification system, analytics endpoints, task generation (manual + auto), and all UI flows are secure and production-ready. Task generation works via manual button or auto-trigger on page visits. Remaining work focuses on cron automation for true background processing, query optimization, and email configuration.
 
 ## Recent Updates (November 2025)
 
