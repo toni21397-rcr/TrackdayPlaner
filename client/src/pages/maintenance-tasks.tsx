@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, CheckCircle, Clock, XCircle, AlertCircle } from "lucide-react";
+import { Filter, CheckCircle, Clock, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -120,6 +120,37 @@ export default function MaintenanceTasks() {
     },
   });
 
+  const generateTasksMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/maintenance/process-triggers", undefined);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/maintenance-tasks"] });
+      localStorage.setItem("last-trigger-processing", Date.now().toString());
+      toast({
+        title: "Tasks generated",
+        description: "Maintenance tasks have been updated based on your current plans and vehicle status.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to generate tasks. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  useEffect(() => {
+    const lastProcessing = localStorage.getItem("last-trigger-processing");
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    
+    if (!lastProcessing || parseInt(lastProcessing) < oneHourAgo) {
+      generateTasksMutation.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleAction = (action: "complete" | "snooze" | "dismiss") => {
     if (!actioningTask) return;
     
@@ -187,11 +218,34 @@ export default function MaintenanceTasks() {
     <div className="flex-1 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-semibold">Maintenance Tasks</h1>
-          <p className="text-muted-foreground">
-            View and manage your upcoming maintenance tasks
-          </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-semibold">Maintenance Tasks</h1>
+            <p className="text-muted-foreground">
+              View and manage your upcoming maintenance tasks
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Tasks are auto-generated from your maintenance plans. Click "Generate Tasks" to update based on trackdays, time intervals, or odometer readings.
+            </p>
+          </div>
+          <Button
+            variant="default"
+            onClick={() => generateTasksMutation.mutate()}
+            disabled={generateTasksMutation.isPending}
+            data-testid="button-generate-tasks"
+          >
+            {generateTasksMutation.isPending ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Generate Tasks
+              </>
+            )}
+          </Button>
         </div>
 
         {/* Filters */}

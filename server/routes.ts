@@ -1266,18 +1266,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vehicleId: vehicleId as string
       });
       
-      const filteredTasks = [];
+      const enrichedTasks = [];
       for (const task of tasks) {
         const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
         if (vehiclePlan) {
           const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
           if (vehicle && canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
-            filteredTasks.push(task);
+            const plan = await storage.getMaintenancePlan(vehiclePlan.planId);
+            let checklistItemTitle = task.customTitle || "Untitled Task";
+            
+            if (task.checklistItemId && plan) {
+              const checklistItems = await storage.getPlanChecklistItems(plan.id);
+              const checklistItem = checklistItems.find(item => item.id === task.checklistItemId);
+              if (checklistItem) {
+                checklistItemTitle = checklistItem.title;
+              }
+            }
+            
+            enrichedTasks.push({
+              ...task,
+              vehicle,
+              planName: plan?.name || "Unknown Plan",
+              checklistItemTitle,
+            });
           }
         }
       }
       
-      res.json(filteredTasks);
+      res.json(enrichedTasks);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
