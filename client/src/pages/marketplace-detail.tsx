@@ -33,7 +33,7 @@ const CONDITIONS = {
   like_new: "Like New",
   good: "Good",
   fair: "Fair",
-  for_parts: "For Parts",
+  parts_only: "For Parts",
 };
 
 export default function MarketplaceDetail() {

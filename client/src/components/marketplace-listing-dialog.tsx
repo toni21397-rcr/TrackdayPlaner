@@ -57,7 +57,7 @@ const CONDITIONS = [
   { value: "like_new", label: "Like New" },
   { value: "good", label: "Good" },
   { value: "fair", label: "Fair" },
-  { value: "for_parts", label: "For Parts" },
+  { value: "parts_only", label: "For Parts" },
 ];
 
 export function MarketplaceListingDialog({

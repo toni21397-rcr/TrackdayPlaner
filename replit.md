@@ -79,6 +79,41 @@ Trackday Planner is a full-stack web application for motorsport enthusiasts to p
 - Maintains backward compatibility with existing track data (new fields optional with defaults)
 - Fixed: Panel shows all trackdays regardless of year/status filters to ensure complete history
 
+## Marketplace Feature (November 2025 - COMPLETE)
+
+**Status:** Backend and frontend 100% complete. Users can buy and sell motorcycle parts, bikes, gear, and accessories in a classifieds-style marketplace. No payment processing—users exchange contact info directly.
+
+**Database Schema:**
+- ✅ `marketplace_listings` table with userId ownership, cascade delete
+- ✅ Categories: bike, parts (engine/suspension/brakes/bodywork/electronics), gear (helmet/suit/gloves/boots), accessories, wanted
+- ✅ Condition tracking: new, like_new, good, fair, parts_only
+- ✅ Pricing in cents with currency support
+- ✅ Contact information (phone, email, preferred contact method)
+- ✅ Image URLs array for listing photos
+- ✅ Status: active, sold, expired (default 60-day expiry)
+- ✅ Price index for query performance
+
+**Backend Infrastructure:**
+- ✅ Storage interface with CRUD operations, filtering, pagination, search
+- ✅ API routes: list (with filters/search/pagination), create, update, delete
+- ✅ Authorization: Ownership checks on mutations, public read access
+- ✅ Pagination: offset/limit with cursor-ready structure
+- ✅ Search: ILIKE on title/description (v1, can upgrade to full-text search)
+
+**Frontend Components:**
+- ✅ **Marketplace Browse** (`/marketplace`): Grid layout with filters (category, condition, price range), search, pagination, empty states
+- ✅ **Listing Detail** (`/marketplace/:id`): Image carousel, price, description, seller contact info, edit/delete for owners
+- ✅ **Create/Edit Dialog**: Form with image upload, category/condition selectors, contact preferences
+- ✅ Proper authentication checks, loading states, error handling
+- ✅ Integrated into sidebar navigation with Package icon
+
+**Design Decisions:**
+- Classifieds-style: No payment processing, users exchange contact info only
+- Default 60-day listing expiry with automatic status updates
+- Public read access for browsing, authentication required for creating listings
+- Price stored in cents for precision, displayed with currency formatting
+- Categories designed for trackday enthusiasts (bikes, parts, gear, accessories, wanted items)
+
 ## Recent Updates (January 2025)
 
 **Searchable Motorcycle Selector**
