@@ -1,5 +1,6 @@
 import type { MaintenanceTask, MaintenanceLog, PlanChecklistItem, AutoCompleteMatcher } from "@shared/schema";
 import { autoCompleteMatcherSchema } from "@shared/schema";
+import { logger } from "./logger";
 
 export interface TaskMatchResult {
   taskId: string;
@@ -57,7 +58,9 @@ export class TaskAutoCompleteService {
       const parsed = autoCompleteMatcherSchema.safeParse(task.checklistItem.autoCompleteMatcher);
       matcher = parsed.success ? parsed.data : {};
     } catch (e) {
-      console.warn("Invalid autoCompleteMatcher for checklist item:", task.checklistItemId);
+      logger.warn('Invalid autoCompleteMatcher for checklist item', {
+        checklistItemId: task.checklistItemId,
+      }, 'taskAutoComplete');
       matcher = {};
     }
     

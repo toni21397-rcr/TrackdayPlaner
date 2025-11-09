@@ -16,6 +16,7 @@ import {
   DatabaseError,
   ExternalServiceError 
 } from "./errorHandler";
+import { logger } from "./logger";
 import multer from "multer";
 import Papa from "papaparse";
 import {
@@ -1840,37 +1841,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ MAINTENANCE SCHEDULING ============
-  app.post("/api/maintenance/process-triggers", isAuthenticated, async (req: any, res) => {
-    try {
-      const { TriggerProcessor } = await import("./triggerProcessor.ts");
-      const processor = new TriggerProcessor(storage);
-      
-      await processor.processAllTriggers();
-      await processor.updateTaskStatuses();
-      
-      analyticsCache.invalidateAll();
-      res.json({ success: true, message: "Trigger processing completed" });
-    } catch (error: any) {
-      console.error("Error processing triggers:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+  app.post("/api/maintenance/process-triggers", isAuthenticated, asyncHandler(async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { TriggerProcessor } = await import("./triggerProcessor.ts");
+    const processor = new TriggerProcessor(storage);
+    
+    await processor.processAllTriggers();
+    await processor.updateTaskStatuses();
+    
+    analyticsCache.invalidateAll();
+    
+    logger.business('Maintenance triggers processed', {
+      userId,
+      action: 'processTriggers',
+    }, 'maintenance');
+    
+    res.json({ success: true, message: "Trigger processing completed" });
+  }));
 
   // Send notification emails for due tasks
-  app.post("/api/maintenance/send-notifications", isAuthenticated, async (req: any, res) => {
-    try {
-      const { NotificationCoordinator } = await import("./notificationCoordinator.ts");
-      const { emailService } = await import("./emailService.ts");
-      
-      const coordinator = new NotificationCoordinator(storage, emailService);
-      await coordinator.sendDueTaskNotifications();
-      
-      res.json({ success: true, message: "Notifications sent successfully" });
-    } catch (error: any) {
-      console.error("Error sending notifications:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+  app.post("/api/maintenance/send-notifications", isAuthenticated, asyncHandler(async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { NotificationCoordinator } = await import("./notificationCoordinator.ts");
+    const { emailService } = await import("./emailService.ts");
+    
+    const coordinator = new NotificationCoordinator(storage, emailService);
+    await coordinator.sendDueTaskNotifications();
+    
+    logger.business('Maintenance notifications sent', {
+      userId,
+      action: 'sendNotifications',
+    }, 'maintenance');
+    
+    res.json({ success: true, message: "Notifications sent successfully" });
+  }));
 
   // Handle email action links (complete/snooze/dismiss tasks from email)
   app.get("/api/maintenance/email-action/:token", async (req, res) => {

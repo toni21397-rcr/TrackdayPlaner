@@ -1,5 +1,6 @@
 import { IStorage } from "./storage";
 import seedData from "./seed-tracks.json";
+import { logger } from "./logger";
 
 /**
  * Seeds the database with comprehensive track data
@@ -7,7 +8,7 @@ import seedData from "./seed-tracks.json";
  */
 export async function seedTracks(storage: IStorage): Promise<{ added: number; skipped: number; total: number }> {
   try {
-    console.log("🌱 Starting track seeding...");
+    logger.info('Starting track seeding', { totalTracks: seedData.length }, 'seedTracks');
     
     // Get existing tracks
     const existingTracks = await storage.getTracks();
@@ -22,12 +23,16 @@ export async function seedTracks(storage: IStorage): Promise<{ added: number; sk
     });
     
     if (tracksToAdd.length === 0) {
-      console.log(`✅ All ${seedData.length} tracks already exist in database.`);
+      logger.info('All tracks already exist in database', {
+        totalTracks: seedData.length,
+      }, 'seedTracks');
       return { added: 0, skipped: seedData.length, total: seedData.length };
     }
     
     // Insert new tracks
-    console.log(`📍 Adding ${tracksToAdd.length} new tracks...`);
+    logger.info('Adding new tracks', {
+      tracksToAdd: tracksToAdd.length,
+    }, 'seedTracks');
     for (const track of tracksToAdd) {
       await storage.createTrack(track);
     }
@@ -35,12 +40,17 @@ export async function seedTracks(storage: IStorage): Promise<{ added: number; sk
     const added = tracksToAdd.length;
     const skipped = seedData.length - added;
     
-    console.log(`✅ Successfully seeded ${added} tracks!`);
-    console.log(`   (Skipped ${skipped} existing tracks)`);
+    logger.info('Track seeding completed', {
+      added,
+      skipped,
+      total: seedData.length,
+    }, 'seedTracks');
     
     return { added, skipped, total: seedData.length };
   } catch (error) {
-    console.error("❌ Error seeding tracks:", error);
+    logger.error('Error seeding tracks', {
+      error: error instanceof Error ? error.message : String(error),
+    }, 'seedTracks');
     throw error;
   }
 }

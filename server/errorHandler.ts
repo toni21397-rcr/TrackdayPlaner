@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
+import { logger } from "./logger";
 
 export class AppError extends Error {
   constructor(
@@ -185,9 +186,9 @@ export function errorHandler(
       (serverLogData as any).externalError = error.originalError.message;
     }
     
-    console.error(JSON.stringify(serverLogData));
+    logger.error('Request error', serverLogData, 'errorHandler');
   } else {
-    console.warn(JSON.stringify(logData));
+    logger.warn('Request warning', logData, 'errorHandler');
   }
   
   res.setHeader('X-Request-ID', requestId);

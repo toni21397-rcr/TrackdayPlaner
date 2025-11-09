@@ -7,6 +7,7 @@ import type {
   CadenceConfig 
 } from "@shared/schema";
 import { format, addDays, addMonths, parseISO, isBefore, isAfter } from "date-fns";
+import { logger } from "./logger";
 
 /**
  * TriggerProcessor - Service to process maintenance plan triggers and generate tasks
@@ -25,21 +26,24 @@ export class TriggerProcessor {
    * Main entry point - process all active vehicle plans
    */
   async processAllTriggers(): Promise<void> {
-    console.log("[TriggerProcessor] Starting trigger processing...");
+    logger.info('Starting trigger processing', {}, 'triggerProcessor');
     
     // Get all active vehicle plans
     const vehiclePlans = await this.storage.getVehiclePlans({ status: "active" });
-    console.log(`[TriggerProcessor] Found ${vehiclePlans.length} active vehicle plans`);
+    logger.info('Found active vehicle plans', { count: vehiclePlans.length }, 'triggerProcessor');
     
     for (const vehiclePlan of vehiclePlans) {
       try {
         await this.processVehiclePlan(vehiclePlan);
       } catch (error) {
-        console.error(`[TriggerProcessor] Error processing vehicle plan ${vehiclePlan.id}:`, error);
+        logger.error('Error processing vehicle plan', {
+          vehiclePlanId: vehiclePlan.id,
+          error: error instanceof Error ? error.message : String(error),
+        }, 'triggerProcessor');
       }
     }
     
-    console.log("[TriggerProcessor] Trigger processing complete");
+    logger.info('Trigger processing complete', {}, 'triggerProcessor');
   }
 
   /**
@@ -49,14 +53,17 @@ export class TriggerProcessor {
     // Get the maintenance plan
     const plan = await this.storage.getMaintenancePlan(vehiclePlan.planId);
     if (!plan) {
-      console.warn(`[TriggerProcessor] Plan ${vehiclePlan.planId} not found for vehicle plan ${vehiclePlan.id}`);
+      logger.warn('Plan not found for vehicle plan', {
+        planId: vehiclePlan.planId,
+        vehiclePlanId: vehiclePlan.id,
+      }, 'triggerProcessor');
       return;
     }
 
     // Get checklist items for this plan
     const checklistItems = await this.storage.getPlanChecklistItems(plan.id);
     if (checklistItems.length === 0) {
-      console.log(`[TriggerProcessor] No checklist items for plan ${plan.id}`);
+      logger.debug('No checklist items for plan', { planId: plan.id }, 'triggerProcessor');
       return;
     }
 
@@ -79,7 +86,7 @@ export class TriggerProcessor {
         await this.processEngineHoursTrigger(vehiclePlan, plan, checklistItems, existingTasks);
         break;
       default:
-        console.warn(`[TriggerProcessor] Unknown cadence type: ${plan.cadenceType}`);
+        logger.warn('Unknown cadence type', { cadenceType: plan.cadenceType }, 'triggerProcessor');
     }
   }
 
@@ -95,7 +102,7 @@ export class TriggerProcessor {
   ): Promise<void> {
     const config = plan.cadenceConfig.trackday;
     if (!config) {
-      console.warn(`[TriggerProcessor] No trackday config for plan ${plan.id}`);
+      logger.warn('No trackday config for plan', { planId: plan.id }, 'triggerProcessor');
       return;
     }
 
@@ -185,7 +192,7 @@ export class TriggerProcessor {
   ): Promise<void> {
     const config = plan.cadenceConfig.time_interval;
     if (!config || !config.intervalDays) {
-      console.warn(`[TriggerProcessor] No time_interval config for plan ${plan.id}`);
+      logger.warn('No time_interval config for plan', { planId: plan.id }, 'triggerProcessor');
       return;
     }
 
@@ -240,7 +247,7 @@ export class TriggerProcessor {
   ): Promise<void> {
     const config = plan.cadenceConfig.odometer;
     if (!config || !config.intervalKm) {
-      console.warn(`[TriggerProcessor] No odometer config for plan ${plan.id}`);
+      logger.warn('No odometer config for plan', { planId: plan.id }, 'triggerProcessor');
       return;
     }
 
@@ -300,7 +307,7 @@ export class TriggerProcessor {
   ): Promise<void> {
     const config = plan.cadenceConfig.engine_hours;
     if (!config || !config.intervalHours) {
-      console.warn(`[TriggerProcessor] No engine_hours config for plan ${plan.id}`);
+      logger.warn('No engine_hours config for plan', { planId: plan.id }, 'triggerProcessor');
       return;
     }
 
@@ -361,7 +368,11 @@ export class TriggerProcessor {
     };
 
     await this.storage.createMaintenanceTask(task);
-    console.log(`[TriggerProcessor] Created task for checklist item "${checklistItem.title}"`);
+    logger.debug('Created maintenance task', {
+      checklistItemTitle: checklistItem.title,
+      vehiclePlanId,
+      checklistItemId: checklistItem.id,
+    }, 'triggerProcessor');
   }
 
   /**
@@ -369,7 +380,7 @@ export class TriggerProcessor {
    * Tasks become "due" when their due date passes
    */
   async updateTaskStatuses(): Promise<void> {
-    console.log("[TriggerProcessor] Updating task statuses...");
+    logger.info('Updating task statuses', {}, 'triggerProcessor');
     
     const allTasksResult = await this.storage.getMaintenanceTasks({ status: "pending", limit: 10000 });
     const now = new Date();
@@ -377,10 +388,10 @@ export class TriggerProcessor {
     for (const task of allTasksResult.items) {
       if (task.status === "pending" && isBefore(task.dueAt, now)) {
         await this.storage.updateMaintenanceTask(task.id, { status: "due" });
-        console.log(`[TriggerProcessor] Task ${task.id} is now due`);
+        logger.debug('Task is now due', { taskId: task.id }, 'triggerProcessor');
       }
     }
 
-    console.log("[TriggerProcessor] Task status update complete");
+    logger.info('Task status update complete', {}, 'triggerProcessor');
   }
 }

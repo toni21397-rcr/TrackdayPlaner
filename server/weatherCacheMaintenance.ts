@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { logger } from "./logger";
 
 const WEATHER_CACHE_TTL_HOURS = 6;
 const WEATHER_CACHE_MAX_AGE_DAYS = 30;
@@ -16,24 +17,22 @@ export async function cleanupOldWeatherCache(): Promise<CleanupResult> {
     const removed = await storage.cleanupOldWeatherCache(WEATHER_CACHE_MAX_AGE_DAYS);
     const durationMs = Date.now() - startTime;
     
-    console.log(JSON.stringify({
-      action: 'weatherCacheCleanup',
+    logger.debug('Weather cache cleanup completed', {
       removed,
       durationMs,
       maxAgeDays: WEATHER_CACHE_MAX_AGE_DAYS,
-    }));
+    }, 'weatherCache');
     
     return { removed, durationMs };
   } catch (error) {
     const durationMs = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : String(error);
     
-    console.error(JSON.stringify({
-      action: 'weatherCacheCleanup',
+    logger.error('Weather cache cleanup failed', {
       removed: 0,
       durationMs,
       error: errorMessage,
-    }));
+    }, 'weatherCache');
     
     return { removed: 0, durationMs, error: errorMessage };
   }
@@ -50,26 +49,32 @@ export function ensureFreshCache(): void {
   
   lastCleanupTime = now;
   cleanupOldWeatherCache().catch(error => {
-    console.error('Lazy weather cache cleanup failed:', error);
+    logger.error('Lazy weather cache cleanup failed', { error: error.message }, 'weatherCache');
   });
 }
 
 export function startPeriodicCleanup(): void {
   const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
   
-  console.log('Starting periodic weather cache cleanup (24h interval)');
+  logger.info('Starting periodic weather cache cleanup (24h interval)', {}, 'weatherCache');
   
   cleanupOldWeatherCache().then(result => {
-    console.log(`Initial weather cache cleanup completed: ${result.removed} entries removed in ${result.durationMs}ms`);
+    logger.info('Initial weather cache cleanup completed', {
+      removed: result.removed,
+      durationMs: result.durationMs,
+    }, 'weatherCache');
   }).catch(error => {
-    console.error('Initial weather cache cleanup failed:', error);
+    logger.error('Initial weather cache cleanup failed', { error: error.message }, 'weatherCache');
   });
   
   setInterval(() => {
     cleanupOldWeatherCache().then(result => {
-      console.log(`Scheduled weather cache cleanup completed: ${result.removed} entries removed in ${result.durationMs}ms`);
+      logger.info('Scheduled weather cache cleanup completed', {
+        removed: result.removed,
+        durationMs: result.durationMs,
+      }, 'weatherCache');
     }).catch(error => {
-      console.error('Scheduled weather cache cleanup failed:', error);
+      logger.error('Scheduled weather cache cleanup failed', { error: error.message }, 'weatherCache');
     });
   }, CLEANUP_INTERVAL_MS);
 }

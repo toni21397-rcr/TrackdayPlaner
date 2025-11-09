@@ -5,6 +5,7 @@ import { startPeriodicCleanup } from "./weatherCacheMaintenance";
 import { startAnalyticsCacheCleanup } from "./analyticsCache";
 import { globalRateLimiter } from "./rateLimiting";
 import { errorHandler, notFoundHandler } from "./errorHandler";
+import { logger } from "./logger";
 import { randomBytes } from "crypto";
 
 const app = express();
@@ -28,30 +29,25 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use(globalRateLimiter);
 
-app.use((req, res, next) => {
+app.use((req: any, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+    const durationMs = Date.now() - start;
+    
+    if (req.path.startsWith("/api")) {
+      const metadata: Record<string, any> = {
+        requestId: req.requestId,
+        userId: req.user?.claims?.sub,
+        contentLength: res.get('content-length'),
+        userAgent: req.get('user-agent'),
+      };
+
+      if (req.query && Object.keys(req.query).length > 0) {
+        metadata.queryParams = Object.keys(req.query).length;
       }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      logger.http(req.method, req.path, res.statusCode, durationMs, metadata);
     }
   });
 

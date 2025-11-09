@@ -1,4 +1,5 @@
 import type { MaintenanceTask } from "@shared/schema";
+import { logger } from "./logger";
 
 interface AnalyticsCacheEntry<T> {
   data: T;
@@ -60,35 +61,32 @@ export class AnalyticsCache {
     const entry = this.maintenanceAnalyticsCache.get(key);
     
     if (!entry) {
-      console.log(JSON.stringify({
-        action: 'analyticsCacheMiss',
+      logger.debug('Analytics cache miss', {
         type: 'maintenanceAnalytics',
         userId,
         reason: 'notFound',
-      }));
+      }, 'analyticsCache');
       return null;
     }
     
     if (this.isExpired(entry)) {
-      console.log(JSON.stringify({
-        action: 'analyticsCacheMiss',
+      const ageMs = new Date().getTime() - entry.fetchedAt.getTime();
+      logger.debug('Analytics cache miss - expired', {
         type: 'maintenanceAnalytics',
         userId,
-        reason: 'expired',
-        ageMs: new Date().getTime() - entry.fetchedAt.getTime(),
-      }));
+        ageMs,
+      }, 'analyticsCache');
       this.maintenanceAnalyticsCache.delete(key);
       return null;
     }
     
     const cacheAge = new Date().getTime() - entry.fetchedAt.getTime();
-    console.log(JSON.stringify({
-      action: 'analyticsCacheHit',
+    logger.debug('Analytics cache hit', {
       type: 'maintenanceAnalytics',
       userId,
       cacheAgeMs: cacheAge,
       ttlMs: this.defaultTTL,
-    }));
+    }, 'analyticsCache');
     
     return entry.data;
   }
@@ -104,13 +102,12 @@ export class AnalyticsCache {
       expiresAt,
     });
     
-    console.log(JSON.stringify({
-      action: 'analyticsCacheSet',
+    logger.debug('Analytics cache set', {
       type: 'maintenanceAnalytics',
       userId,
       ttlMs: this.defaultTTL,
       totalTasks: data.totalTasks,
-    }));
+    }, 'analyticsCache');
   }
   
   getEnrichedTasks(userId: string): EnrichedTask[] | null {
@@ -118,36 +115,33 @@ export class AnalyticsCache {
     const entry = this.enrichedTasksCache.get(key);
     
     if (!entry) {
-      console.log(JSON.stringify({
-        action: 'analyticsCacheMiss',
+      logger.debug('Analytics cache miss', {
         type: 'enrichedTasks',
         userId,
         reason: 'notFound',
-      }));
+      }, 'analyticsCache');
       return null;
     }
     
     if (this.isExpired(entry)) {
-      console.log(JSON.stringify({
-        action: 'analyticsCacheMiss',
+      const ageMs = new Date().getTime() - entry.fetchedAt.getTime();
+      logger.debug('Analytics cache miss - expired', {
         type: 'enrichedTasks',
         userId,
-        reason: 'expired',
-        ageMs: new Date().getTime() - entry.fetchedAt.getTime(),
-      }));
+        ageMs,
+      }, 'analyticsCache');
       this.enrichedTasksCache.delete(key);
       return null;
     }
     
     const cacheAge = new Date().getTime() - entry.fetchedAt.getTime();
-    console.log(JSON.stringify({
-      action: 'analyticsCacheHit',
+    logger.debug('Analytics cache hit', {
       type: 'enrichedTasks',
       userId,
       cacheAgeMs: cacheAge,
       ttlMs: this.defaultTTL,
       taskCount: entry.data.length,
-    }));
+    }, 'analyticsCache');
     
     return entry.data;
   }
@@ -163,13 +157,12 @@ export class AnalyticsCache {
       expiresAt,
     });
     
-    console.log(JSON.stringify({
-      action: 'analyticsCacheSet',
+    logger.debug('Analytics cache set', {
       type: 'enrichedTasks',
       userId,
       ttlMs: this.defaultTTL,
       taskCount: data.length,
-    }));
+    }, 'analyticsCache');
   }
   
   invalidateUser(userId: string): void {
@@ -180,12 +173,11 @@ export class AnalyticsCache {
     const tasksDeleted = this.enrichedTasksCache.delete(tasksKey);
     
     if (analyticsDeleted || tasksDeleted) {
-      console.log(JSON.stringify({
-        action: 'analyticsCacheInvalidate',
+      logger.debug('Analytics cache invalidated', {
         userId,
         analyticsDeleted,
         tasksDeleted,
-      }));
+      }, 'analyticsCache');
     }
   }
   
@@ -196,11 +188,10 @@ export class AnalyticsCache {
     this.maintenanceAnalyticsCache.clear();
     this.enrichedTasksCache.clear();
     
-    console.log(JSON.stringify({
-      action: 'analyticsCacheInvalidateAll',
+    logger.info('Analytics cache invalidated (all users)', {
       analyticsEntriesRemoved: analyticsCount,
       tasksEntriesRemoved: tasksCount,
-    }));
+    }, 'analyticsCache');
   }
   
   getCacheStats(): {
@@ -253,12 +244,11 @@ export class AnalyticsCache {
     
     const durationMs = Date.now() - startTime;
     
-    console.log(JSON.stringify({
-      action: 'analyticsCacheCleanup',
+    logger.debug('Analytics cache cleanup', {
       analyticsRemoved,
       tasksRemoved,
       durationMs,
-    }));
+    }, 'analyticsCache');
   }
 }
 
@@ -267,18 +257,17 @@ export const analyticsCache = new AnalyticsCache();
 export function startAnalyticsCacheCleanup() {
   const cleanupInterval = 15 * 60 * 1000; // 15 minutes
   
-  console.log(`Starting periodic analytics cache cleanup (${cleanupInterval / 60000}min interval)`);
+  logger.info(`Starting periodic analytics cache cleanup (${cleanupInterval / 60000}min interval)`, {}, 'analyticsCache');
   
   setInterval(async () => {
     await analyticsCache.cleanupExpired();
   }, cleanupInterval);
   
-  console.log('Performing initial analytics cache cleanup...');
+  logger.info('Performing initial analytics cache cleanup', {}, 'analyticsCache');
   analyticsCache.cleanupExpired().then(() => {
     const stats = analyticsCache.getCacheStats();
-    console.log(JSON.stringify({
-      action: 'analyticsCacheInitialCleanup',
+    logger.debug('Analytics cache initial cleanup complete', {
       stats,
-    }));
+    }, 'analyticsCache');
   });
 }
