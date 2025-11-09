@@ -9,6 +9,13 @@ import { getGoogleDirections, getORSRoute, getOpenWeatherForecast, isServiceAvai
 import { ensureFreshCache } from "./weatherCacheMaintenance";
 import { weatherRateLimiter, externalApiRateLimiter } from "./rateLimiting";
 import { analyticsCache } from "./analyticsCache";
+import { 
+  asyncHandler, 
+  NotFoundError, 
+  ForbiddenError, 
+  DatabaseError,
+  ExternalServiceError 
+} from "./errorHandler";
 import multer from "multer";
 import Papa from "papaparse";
 import {
@@ -42,16 +49,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Replit Auth integration - Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  app.get('/api/auth/user', isAuthenticated, asyncHandler(async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    if (!user) throw new NotFoundError('User');
+    res.json(user);
+  }));
 
   // ============ ORGANIZERS ============
   app.get("/api/organizers", async (req, res) => {
@@ -59,63 +62,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(organizers);
   });
 
-  app.get("/api/organizers/:id", async (req, res) => {
+  app.get("/api/organizers/:id", asyncHandler(async (req, res) => {
     const organizer = await storage.getOrganizer(req.params.id);
-    if (!organizer) return res.status(404).json({ error: "Organizer not found" });
+    if (!organizer) throw new NotFoundError('Organizer');
     res.json(organizer);
-  });
+  }));
 
-  app.post("/api/organizers", isAuthenticated, async (req: any, res) => {
-    try {
-      const data = insertOrganizerSchema.parse(req.body);
-      const userId = req.user.claims.sub;
-      const organizer = await storage.createOrganizer({ ...data, createdBy: userId });
-      res.json(organizer);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
+  app.post("/api/organizers", isAuthenticated, asyncHandler(async (req: any, res) => {
+    const data = insertOrganizerSchema.parse(req.body);
+    const userId = req.user.claims.sub;
+    const organizer = await storage.createOrganizer({ ...data, createdBy: userId });
+    res.json(organizer);
+  }));
 
-  app.patch("/api/organizers/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const organizer = await storage.getOrganizer(req.params.id);
-      if (!organizer) return res.status(404).json({ error: "Organizer not found" });
-      
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!canModifyResource(userId, organizer.createdBy, user?.isAdmin || false)) {
-        return res.status(403).json({ error: "You don't have permission to modify this organizer" });
-      }
-      
-      const data = insertOrganizerSchema.parse(req.body);
-      const updated = await storage.updateOrganizer(req.params.id, data);
-      if (!updated) return res.status(404).json({ error: "Organizer not found" });
-      res.json(updated);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
+  app.patch("/api/organizers/:id", isAuthenticated, asyncHandler(async (req: any, res) => {
+    const organizer = await storage.getOrganizer(req.params.id);
+    if (!organizer) throw new NotFoundError('Organizer');
+    
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    
+    if (!canModifyResource(userId, organizer.createdBy, user?.isAdmin || false)) {
+      throw new ForbiddenError("You don't have permission to modify this organizer");
     }
-  });
+    
+    const data = insertOrganizerSchema.parse(req.body);
+    const updated = await storage.updateOrganizer(req.params.id, data);
+    if (!updated) throw new NotFoundError('Organizer');
+    res.json(updated);
+  }));
 
-  app.delete("/api/organizers/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const organizer = await storage.getOrganizer(req.params.id);
-      if (!organizer) return res.status(404).json({ error: "Organizer not found" });
-      
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!canModifyResource(userId, organizer.createdBy, user?.isAdmin || false)) {
-        return res.status(403).json({ error: "You don't have permission to delete this organizer" });
-      }
-      
-      const deleted = await storage.deleteOrganizer(req.params.id);
-      if (!deleted) return res.status(404).json({ error: "Organizer not found" });
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+  app.delete("/api/organizers/:id", isAuthenticated, asyncHandler(async (req: any, res) => {
+    const organizer = await storage.getOrganizer(req.params.id);
+    if (!organizer) throw new NotFoundError('Organizer');
+    
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    
+    if (!canModifyResource(userId, organizer.createdBy, user?.isAdmin || false)) {
+      throw new ForbiddenError("You don't have permission to delete this organizer");
     }
-  });
+    
+    const deleted = await storage.deleteOrganizer(req.params.id);
+    if (!deleted) throw new NotFoundError('Organizer');
+    res.json({ success: true });
+  }));
 
   // ============ TRACKS ============
   app.get("/api/tracks", async (req, res) => {

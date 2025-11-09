@@ -4,6 +4,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import { startPeriodicCleanup } from "./weatherCacheMaintenance";
 import { startAnalyticsCacheCleanup } from "./analyticsCache";
 import { globalRateLimiter } from "./rateLimiting";
+import { errorHandler, notFoundHandler } from "./errorHandler";
+import { randomBytes } from "crypto";
 
 const app = express();
 
@@ -12,6 +14,11 @@ declare module 'http' {
     rawBody: unknown
   }
 }
+app.use((req: any, _res, next) => {
+  req.requestId = randomBytes(16).toString('hex');
+  next();
+});
+
 app.use(express.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;
@@ -54,13 +61,9 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+  app.use(notFoundHandler);
 
-    res.status(status).json({ message });
-    throw err;
-  });
+  app.use(errorHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
