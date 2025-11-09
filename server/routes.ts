@@ -26,6 +26,8 @@ import {
   insertTaskEventSchema,
   insertNotificationPreferencesSchema,
   insertMotorcycleModelSchema,
+  insertMarketplaceListingSchema,
+  updateMarketplaceListingSchema,
   type BudgetSummary,
   type DashboardStats,
   type MonthlySpending,
@@ -2109,6 +2111,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error importing organizers:", error);
       res.status(500).json({ error: "Failed to import organizers" });
+    }
+  });
+
+  // ============ MARKETPLACE ============
+
+  app.get("/api/marketplace/listings", async (req, res) => {
+    try {
+      const filters = {
+        category: req.query.category as string | undefined,
+        status: req.query.status as string | undefined,
+        minPrice: req.query.minPrice ? parseInt(req.query.minPrice as string) : undefined,
+        maxPrice: req.query.maxPrice ? parseInt(req.query.maxPrice as string) : undefined,
+        sellerId: req.query.sellerId as string | undefined,
+        search: req.query.search as string | undefined,
+        sort: req.query.sort as "newest" | "price_asc" | "price_desc" | undefined,
+        page: req.query.page ? parseInt(req.query.page as string) : undefined,
+        pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : undefined,
+      };
+      
+      const result = await storage.getMarketplaceListings(filters);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/marketplace/listings/:id", async (req, res) => {
+    try {
+      const listing = await storage.getMarketplaceListing(req.params.id);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found" });
+      }
+      res.json(listing);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/marketplace/listings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertMarketplaceListingSchema.parse(req.body);
+      
+      const listing = await storage.createMarketplaceListing(data, userId);
+      res.json(listing);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/marketplace/listings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = updateMarketplaceListingSchema.parse(req.body);
+      
+      const listing = await storage.updateMarketplaceListing(req.params.id, data, userId);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found or unauthorized" });
+      }
+      
+      res.json(listing);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/marketplace/listings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const deleted = await storage.deleteMarketplaceListing(req.params.id, userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Listing not found or unauthorized" });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
