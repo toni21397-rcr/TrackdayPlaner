@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq, and, inArray, sql as drizzleSql } from "drizzle-orm";
+import { eq, and, inArray, sql as drizzleSql, gte, lte, or, ilike, desc, asc, count } from "drizzle-orm";
 import type {
   Organizer, InsertOrganizer,
   Track, InsertTrack,
@@ -23,6 +23,7 @@ import type {
   TaskEvent, InsertTaskEvent,
   NotificationPreferences, InsertNotificationPreferences,
   MotorcycleModel, InsertMotorcycleModel,
+  MarketplaceListing, InsertMarketplaceListing, UpdateMarketplaceListing,
 } from "@shared/schema";
 import {
   organizers,
@@ -45,6 +46,7 @@ import {
   taskEvents,
   notificationPreferences,
   motorcycleModels,
+  marketplaceListings,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -170,6 +172,27 @@ export interface IStorage {
   bulkReplaceMotorcycleModels(models: InsertMotorcycleModel[]): Promise<void>;
   bulkReplaceTracks(tracks: InsertTrack[]): Promise<void>;
   bulkReplaceOrganizers(organizers: InsertOrganizer[]): Promise<void>;
+
+  // Marketplace Listings
+  getMarketplaceListings(filters?: {
+    category?: string;
+    status?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    sellerId?: string;
+    search?: string;
+    sort?: "newest" | "price_asc" | "price_desc";
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    items: MarketplaceListing[];
+    total: number;
+    nextCursor?: string | null;
+  }>;
+  getMarketplaceListing(id: string): Promise<MarketplaceListing | undefined>;
+  createMarketplaceListing(data: InsertMarketplaceListing, sellerId: string): Promise<MarketplaceListing>;
+  updateMarketplaceListing(id: string, data: Partial<UpdateMarketplaceListing>, actorId: string): Promise<MarketplaceListing | undefined>;
+  deleteMarketplaceListing(id: string, actorId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -1358,6 +1381,160 @@ export class DbStorage implements IStorage {
     if (organizersData.length > 0) {
       await this.db.insert(organizers).values(organizersData);
     }
+  }
+
+  async getMarketplaceListings(filters?: {
+    category?: string;
+    status?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    sellerId?: string;
+    search?: string;
+    sort?: "newest" | "price_asc" | "price_desc";
+    page?: number;
+    pageSize?: number;
+  }): Promise<{
+    items: MarketplaceListing[];
+    total: number;
+    nextCursor?: string | null;
+  }> {
+    await this.ensureInitialized();
+    
+    const conditions = [];
+    
+    if (filters?.category) {
+      conditions.push(eq(marketplaceListings.category, filters.category));
+    }
+    
+    if (filters?.status) {
+      conditions.push(eq(marketplaceListings.status, filters.status));
+    } else {
+      conditions.push(eq(marketplaceListings.status, "active"));
+    }
+    
+    if (filters?.sellerId) {
+      conditions.push(eq(marketplaceListings.sellerUserId, filters.sellerId));
+    }
+    
+    if (filters?.minPrice !== undefined) {
+      conditions.push(gte(marketplaceListings.priceCents, filters.minPrice));
+    }
+    
+    if (filters?.maxPrice !== undefined) {
+      conditions.push(lte(marketplaceListings.priceCents, filters.maxPrice));
+    }
+    
+    if (filters?.search && filters.search.length >= 3) {
+      conditions.push(
+        or(
+          ilike(marketplaceListings.title, `%${filters.search}%`),
+          ilike(marketplaceListings.description, `%${filters.search}%`)
+        )
+      );
+    }
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const totalResult = await this.db
+      .select({ count: count() })
+      .from(marketplaceListings)
+      .where(whereClause);
+    const total = totalResult[0]?.count || 0;
+    
+    let orderByClause;
+    if (filters?.sort === "price_asc") {
+      orderByClause = [asc(marketplaceListings.priceCents), desc(marketplaceListings.createdAt)];
+    } else if (filters?.sort === "price_desc") {
+      orderByClause = [desc(marketplaceListings.priceCents), desc(marketplaceListings.createdAt)];
+    } else {
+      orderByClause = [desc(marketplaceListings.createdAt)];
+    }
+    
+    const page = filters?.page || 1;
+    const pageSize = Math.min(filters?.pageSize || 20, 50);
+    const offset = (page - 1) * pageSize;
+    
+    const items = await this.db
+      .select()
+      .from(marketplaceListings)
+      .where(whereClause)
+      .orderBy(...orderByClause)
+      .limit(pageSize)
+      .offset(offset);
+    
+    return {
+      items: items as MarketplaceListing[],
+      total: Number(total),
+      nextCursor: null,
+    };
+  }
+
+  async getMarketplaceListing(id: string): Promise<MarketplaceListing | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .select()
+      .from(marketplaceListings)
+      .where(eq(marketplaceListings.id, id));
+    return result[0] as MarketplaceListing | undefined;
+  }
+
+  async createMarketplaceListing(data: InsertMarketplaceListing, sellerId: string): Promise<MarketplaceListing> {
+    await this.ensureInitialized();
+    
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 60);
+    
+    const result = await this.db
+      .insert(marketplaceListings)
+      .values({
+        ...data,
+        sellerUserId: sellerId,
+        status: "active",
+        expiresAt,
+      })
+      .returning();
+    
+    return result[0] as MarketplaceListing;
+  }
+
+  async updateMarketplaceListing(
+    id: string,
+    data: Partial<UpdateMarketplaceListing>,
+    actorId: string
+  ): Promise<MarketplaceListing | undefined> {
+    await this.ensureInitialized();
+    
+    const listing = await this.getMarketplaceListing(id);
+    if (!listing || listing.sellerUserId !== actorId) {
+      return undefined;
+    }
+    
+    const result = await this.db
+      .update(marketplaceListings)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(marketplaceListings.id, id))
+      .returning();
+    
+    return result[0] as MarketplaceListing | undefined;
+  }
+
+  async deleteMarketplaceListing(id: string, actorId: string): Promise<boolean> {
+    await this.ensureInitialized();
+    
+    const listing = await this.getMarketplaceListing(id);
+    if (!listing || listing.sellerUserId !== actorId) {
+      return false;
+    }
+    
+    const result = await this.db
+      .delete(marketplaceListings)
+      .where(eq(marketplaceListings.id, id))
+      .returning();
+    
+    return result.length > 0;
   }
 }
 

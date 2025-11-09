@@ -930,6 +930,7 @@ export const marketplaceListings = pgTable(
     index("IDX_marketplace_listings_seller").on(table.sellerUserId),
     index("IDX_marketplace_listings_category_status").on(table.category, table.status),
     index("IDX_marketplace_listings_created").on(table.createdAt),
+    index("IDX_marketplace_listings_price").on(table.priceCents),
   ],
 );
 
