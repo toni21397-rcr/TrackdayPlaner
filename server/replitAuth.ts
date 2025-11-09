@@ -8,6 +8,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { authRateLimiter } from "./rateLimiting";
 
 const getOidcConfig = memoize(
   async () => {
@@ -106,7 +107,7 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-  app.get("/api/login", (req, res, next) => {
+  app.get("/api/login", authRateLimiter, (req, res, next) => {
     const protocol = req.protocol || (req.secure ? "https" : "http");
     const host = req.get("host") || req.hostname; // Includes port
     const strategyName = ensureStrategy(host, protocol);
@@ -116,7 +117,7 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/callback", (req, res, next) => {
+  app.get("/api/callback", authRateLimiter, (req, res, next) => {
     const protocol = req.protocol || (req.secure ? "https" : "http");
     const host = req.get("host") || req.hostname; // Includes port
     const strategyName = ensureStrategy(host, protocol);

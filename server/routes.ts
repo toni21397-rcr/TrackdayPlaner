@@ -7,6 +7,7 @@ import { seedTracks } from "./seed-tracks";
 import { seedMotorcycles } from "./seed-motorcycles";
 import { getGoogleDirections, getORSRoute, getOpenWeatherForecast, isServiceAvailable } from "./apiClient";
 import { ensureFreshCache } from "./weatherCacheMaintenance";
+import { weatherRateLimiter, externalApiRateLimiter } from "./rateLimiting";
 import multer from "multer";
 import Papa from "papaparse";
 import {
@@ -273,7 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Route calculation
-  app.post("/api/trackdays/:id/calculate-route", isAuthenticated, async (req, res) => {
+  app.post("/api/trackdays/:id/calculate-route", externalApiRateLimiter, isAuthenticated, async (req, res) => {
     const trackday = await storage.getTrackday(req.params.id);
     if (!trackday) return res.status(404).json({ error: "Trackday not found" });
     
@@ -363,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk route recalculation for all trackdays
-  app.post("/api/trackdays/recalculate-all-routes", isAuthenticated, async (req, res) => {
+  app.post("/api/trackdays/recalculate-all-routes", externalApiRateLimiter, isAuthenticated, async (req, res) => {
     try {
       const result = await storage.getTrackdays({ limit: 10000 });
       const settings = await storage.getSettings();
@@ -687,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ WEATHER ============
-  app.get("/api/weather/:trackdayId", async (req, res) => {
+  app.get("/api/weather/:trackdayId", weatherRateLimiter, async (req, res) => {
     ensureFreshCache();
     
     const cache = await storage.getWeatherCache(req.params.trackdayId);
@@ -703,7 +704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/weather/:trackdayId/refresh", isAuthenticated, async (req, res) => {
+  app.post("/api/weather/:trackdayId/refresh", weatherRateLimiter, isAuthenticated, async (req, res) => {
     ensureFreshCache();
     
     const trackday = await storage.getTrackday(req.params.trackdayId);
