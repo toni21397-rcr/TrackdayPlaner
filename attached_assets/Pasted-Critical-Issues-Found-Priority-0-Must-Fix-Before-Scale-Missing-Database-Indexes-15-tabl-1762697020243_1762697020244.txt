@@ -1,0 +1,44 @@
+Critical Issues Found
+🔴 Priority 0 - Must Fix Before Scale:
+
+Missing Database Indexes - 15+ tables lack indexes on frequently-queried columns (trackdays by track/date, cost items by trackday, etc.). This will cause slow queries as data grows.
+No Pagination - List endpoints return all records unbounded (tracks, trackdays, vehicles, tasks). This will exhaust connections with large datasets.
+External API Risks - No timeouts/retries on Google Maps, Weather, routing services. A slow provider can block your entire app.
+Weather Cache Growth - Cache has no TTL or cleanup, will grow unbounded forever.
+🟡 Priority 1 - Important But Can Wait:
+5. No Rate Limiting - API is unprotected against abuse or traffic surges.
+
+Limited Caching - Expensive operations (analytics) recalculate on every request.
+Basic Error Handling - Many routes lack proper error recovery.
+🟢 Priority 2 - Nice to Have:
+8. No Data Retention Policy - Need archival strategy for old data (laps, task events, etc.).
+
+Recommended Approach: 3-Phase Implementation
+Phase 1 (Critical - Implement Now):
+
+✅ Add 15+ database indexes for hot query paths
+✅ Add pagination to largest endpoints (trackdays, maintenance tasks, vehicles)
+✅ Add API timeouts/retries via centralized wrapper
+✅ Add weather cache TTL + automatic cleanup
+✅ Add baseline rate limiting middleware
+Estimated effort: 1-2 development sessions
+Impact: Handles 1000s of users safely
+
+Phase 2 (Important - Next):
+
+Caching for analytics & dashboards
+Expanded error handling
+Structured logging for observability
+Phase 3 (Polish):
+
+Data retention/archival automation
+Advanced monitoring
+Queue-based retry system
+My Recommendation
+I propose implementing Phase 1 immediately. These are the critical fixes that protect your database, prevent resource exhaustion, and handle external API failures gracefully. Without these, you risk:
+
+Slow queries as users add more track days
+App crashes when external APIs are slow
+Database connection exhaustion
+Unbounded storage costs
+Would you like me to proceed with Phase 1 implementation now? I'll add the indexes, pagination, API resilience, and cleanup mechanisms. Or if you have specific priorities or timeline constraints, let me know and I can adjust the plan.
