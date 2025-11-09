@@ -65,6 +65,15 @@ export default function MapPage() {
     }));
   }, [tracks, filteredTrackdays]);
 
+  // Enrich all trackdays (unfiltered) for info panel
+  const allEnrichedTrackdays = useMemo(() => {
+    if (!tracks || !trackdays) return [];
+    return trackdays.map((td) => ({
+      ...td,
+      track: tracks.find((t) => t.id === td.trackId),
+    }));
+  }, [tracks, trackdays]);
+
   // Calculate statistics
   const stats = useMemo(() => {
     const total = filteredTrackdays.length;
@@ -263,7 +272,7 @@ export default function MapPage() {
                   />
                   <TrackInfoPanel 
                     track={selectedTrack} 
-                    trackdays={enrichedTrackdays}
+                    trackdays={allEnrichedTrackdays}
                     onTrackdayClick={handleTrackdayClick}
                     onClose={handleCloseTrackInfo} 
                   />
