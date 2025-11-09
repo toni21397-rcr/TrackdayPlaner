@@ -157,18 +157,44 @@ export default function SettingsPage() {
 
       let lat: number | null = null;
       let lng: number | null = null;
+      let provider = "";
 
       if (googleKey) {
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googleKey}`
-        );
-        const data = await response.json();
+        try {
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googleKey}`
+          );
+          const data = await response.json();
 
-        if (data.status === "OK" && data.results.length > 0) {
-          lat = data.results[0].geometry.location.lat;
-          lng = data.results[0].geometry.location.lng;
-        } else {
-          throw new Error(data.status);
+          if (data.status === "OK" && data.results.length > 0) {
+            lat = data.results[0].geometry.location.lat;
+            lng = data.results[0].geometry.location.lng;
+            provider = "Google Maps";
+          } else if (orsKey) {
+            const orsResponse = await fetch(
+              `https://api.openrouteservice.org/geocode/search?api_key=${orsKey}&text=${encodeURIComponent(address)}&size=1`
+            );
+            const orsData = await orsResponse.json();
+
+            if (orsData.features && orsData.features.length > 0) {
+              lng = orsData.features[0].geometry.coordinates[0];
+              lat = orsData.features[0].geometry.coordinates[1];
+              provider = "OpenRouteService";
+            }
+          }
+        } catch {
+          if (orsKey) {
+            const orsResponse = await fetch(
+              `https://api.openrouteservice.org/geocode/search?api_key=${orsKey}&text=${encodeURIComponent(address)}&size=1`
+            );
+            const orsData = await orsResponse.json();
+
+            if (orsData.features && orsData.features.length > 0) {
+              lng = orsData.features[0].geometry.coordinates[0];
+              lat = orsData.features[0].geometry.coordinates[1];
+              provider = "OpenRouteService";
+            }
+          }
         }
       } else if (orsKey) {
         const response = await fetch(
@@ -179,8 +205,7 @@ export default function SettingsPage() {
         if (data.features && data.features.length > 0) {
           lng = data.features[0].geometry.coordinates[0];
           lat = data.features[0].geometry.coordinates[1];
-        } else {
-          throw new Error("No results found");
+          provider = "OpenRouteService";
         }
       } else {
         toast({
@@ -196,14 +221,16 @@ export default function SettingsPage() {
         form.setValue("homeLng", lng);
         toast({
           title: "Location found",
-          description: `Coordinates set to ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          description: `Coordinates set to ${lat.toFixed(4)}, ${lng.toFixed(4)} via ${provider}`,
         });
         setAddressInput("");
+      } else {
+        throw new Error("Address not found");
       }
     } catch (error) {
       toast({
         title: "Geocoding failed",
-        description: error instanceof Error ? error.message : "Could not find address",
+        description: error instanceof Error ? error.message : "Could not find address. Try a different search term.",
         variant: "destructive",
       });
     } finally {
