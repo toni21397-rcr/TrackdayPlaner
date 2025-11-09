@@ -57,9 +57,8 @@ app.use((req: any, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use(notFoundHandler);
-
-  app.use(errorHandler);
+  // Handle 404s for API routes only (before Vite catch-all)
+  app.use('/api', notFoundHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
@@ -69,6 +68,9 @@ app.use((req: any, res, next) => {
   } else {
     serveStatic(app);
   }
+
+  // Error handler must be last
+  app.use(errorHandler);
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.

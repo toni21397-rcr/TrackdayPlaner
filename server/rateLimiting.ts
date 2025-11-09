@@ -46,8 +46,11 @@ export const globalRateLimiter = rateLimit({
   legacyHeaders: false,
   handler: standardHandler,
   skip: (req) => {
+    // Skip rate limiting for:
+    // 1. Auth endpoints (to prevent login issues)
+    // 2. All non-API routes (frontend assets, Vite HMR, etc.)
     const authPaths = ["/api/health", "/api/auth/user", "/api/login", "/api/callback", "/api/logout"];
-    return authPaths.includes(req.path);
+    return authPaths.includes(req.path) || !req.path.startsWith('/api/');
   },
 });
 

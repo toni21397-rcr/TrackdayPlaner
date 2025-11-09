@@ -17,7 +17,7 @@ export const tutorials: Record<TutorialId, TutorialConfig> = {
     steps: [
       {
         popover: {
-          title: 'Welcome to Trackday Booking! 🏁',
+          title: 'Welcome to Trackday Booking',
           description: 'This quick tour will show you how to find and book trackdays with your favorite organizers.',
           side: 'bottom',
         },
@@ -40,7 +40,7 @@ export const tutorials: Record<TutorialId, TutorialConfig> = {
       },
       {
         popover: {
-          title: 'Ready to Book! ✅',
+          title: 'Ready to Book',
           description: 'You can now browse organizers and view their trackday schedules. Click any organizer card to get started!',
           side: 'bottom',
         },
@@ -55,7 +55,7 @@ export const tutorials: Record<TutorialId, TutorialConfig> = {
     steps: [
       {
         popover: {
-          title: 'Welcome to Maintenance Planning! 🔧',
+          title: 'Welcome to Maintenance Planning',
           description: 'Stay on top of your vehicle maintenance with automated task generation based on trackdays, mileage, or time intervals.',
           side: 'bottom',
         },
@@ -86,7 +86,7 @@ export const tutorials: Record<TutorialId, TutorialConfig> = {
       },
       {
         popover: {
-          title: 'All Set! 🎯',
+          title: 'All Set',
           description: 'Create plans, assign them to vehicles, and let the system generate maintenance tasks automatically. Check the Maintenance Tasks page to see upcoming work!',
           side: 'bottom',
         },
@@ -101,7 +101,7 @@ export const tutorials: Record<TutorialId, TutorialConfig> = {
     steps: [
       {
         popover: {
-          title: 'Welcome to Maintenance Tasks! 📋',
+          title: 'Welcome to Maintenance Tasks',
           description: 'View and manage all maintenance tasks generated from your vehicle plans.',
           side: 'bottom',
         },
@@ -132,7 +132,7 @@ export const tutorials: Record<TutorialId, TutorialConfig> = {
       },
       {
         popover: {
-          title: 'Stay on Track! ✨',
+          title: 'Stay on Track',
           description: 'Regular maintenance keeps your vehicle performing at its best. Check back here before each trackday!',
           side: 'bottom',
         },

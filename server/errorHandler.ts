@@ -202,6 +202,7 @@ export function asyncHandler(fn: Function) {
 }
 
 export function notFoundHandler(req: Request, res: Response, next: NextFunction) {
-  const error = new NotFoundError(`Route ${req.method} ${req.path}`);
+  // This handler is mounted under /api path, so it only handles API routes
+  const error = new NotFoundError(`Route ${req.method} ${req.originalUrl}`);
   next(error);
 }
