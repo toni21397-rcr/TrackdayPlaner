@@ -14,6 +14,7 @@ import {
 import { MapPin, Filter } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { MapView } from "@/components/map-view";
+import { TrackInfoPanel } from "@/components/track-info-panel";
 import type { Track, Trackday } from "@shared/schema";
 
 interface TrackdayWithTrack extends Trackday {
@@ -24,6 +25,7 @@ export default function MapPage() {
   const [, setLocation] = useLocation();
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
 
   const { data: tracks, isLoading: tracksLoading } = useQuery<Track[]>({
     queryKey: ["/api/tracks"],
@@ -85,6 +87,19 @@ export default function MapPage() {
     // Navigate to tracks page or show track details
     setLocation(`/tracks`);
   };
+
+  const handleTrackSelect = (track: Track) => {
+    setSelectedTrackId(track.id);
+  };
+
+  const handleCloseTrackInfo = () => {
+    setSelectedTrackId(null);
+  };
+
+  const selectedTrack = useMemo(() => {
+    if (!selectedTrackId || !tracks) return null;
+    return tracks.find((t) => t.id === selectedTrackId) || null;
+  }, [selectedTrackId, tracks]);
 
   return (
     <div className="flex-1 overflow-auto">
@@ -236,13 +251,21 @@ export default function MapPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="h-[500px]">
+                <div className="h-[500px] relative">
                   <MapView
                     tracks={tracks}
                     trackdays={enrichedTrackdays}
                     onTrackdayClick={handleTrackdayClick}
                     onTrackClick={handleTrackClick}
+                    onTrackSelect={handleTrackSelect}
+                    selectedTrackId={selectedTrackId}
                     className="rounded-b-lg overflow-hidden"
+                  />
+                  <TrackInfoPanel 
+                    track={selectedTrack} 
+                    trackdays={enrichedTrackdays}
+                    onTrackdayClick={handleTrackdayClick}
+                    onClose={handleCloseTrackInfo} 
                   />
                 </div>
               </CardContent>
@@ -260,7 +283,7 @@ export default function MapPage() {
                     <Card
                       key={track.id}
                       className="hover-elevate cursor-pointer"
-                      onClick={() => handleTrackClick(track)}
+                      onClick={() => handleTrackSelect(track)}
                       data-testid={`card-track-${track.id}`}
                     >
                       <CardContent className="p-4">

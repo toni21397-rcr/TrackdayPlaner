@@ -20,6 +20,8 @@ interface MapViewProps {
   trackdays?: TrackdayWithTrack[];
   onTrackClick?: (track: Track) => void;
   onTrackdayClick?: (trackday: TrackdayWithTrack) => void;
+  onTrackSelect?: (track: Track) => void;
+  selectedTrackId?: string | null;
   center?: [number, number];
   zoom?: number;
   className?: string;
@@ -30,6 +32,8 @@ export function MapView({
   trackdays = [],
   onTrackClick,
   onTrackdayClick,
+  onTrackSelect,
+  selectedTrackId = null,
   center = [46.8182, 8.2275], // Switzerland default
   zoom = 6,
   className = "",
@@ -140,9 +144,11 @@ export function MapView({
 
       marker.bindPopup(popupContent);
 
-      // Click handler
+      // Click handler - prioritize track selection for info panel
       marker.on("click", () => {
-        if (hasTrackdays && onTrackdayClick) {
+        if (onTrackSelect) {
+          onTrackSelect(track);
+        } else if (hasTrackdays && onTrackdayClick) {
           onTrackdayClick(trackTrackdays[trackTrackdays.length - 1]);
         } else if (onTrackClick) {
           onTrackClick(track);
