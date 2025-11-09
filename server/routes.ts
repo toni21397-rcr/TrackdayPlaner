@@ -5,6 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { isAdmin, canModifyResource } from "./adminMiddleware";
 import { seedTracks } from "./seed-tracks";
 import { seedMotorcycles } from "./seed-motorcycles";
+import { getGoogleDirections, getORSRoute, getOpenWeatherForecast, isServiceAvailable } from "./apiClient";
 import multer from "multer";
 import Papa from "papaparse";
 import {
@@ -702,21 +703,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!track) return res.status(404).json({ error: "Track not found" });
     
     const settings = await storage.getSettings();
+    const existingCache = await storage.getWeatherCache(req.params.trackdayId);
     
-    const weather = await fetchWeather(
-      track.lat,
-      track.lng,
-      trackday.date,
-      settings.openWeatherApiKey
-    );
-    
-    const cache = await storage.setWeatherCache({
-      trackdayId: req.params.trackdayId,
-      fetchedAt: new Date().toISOString(),
-      ...weather,
-    });
-    
-    res.json(cache);
+    try {
+      const weather = await fetchWeather(
+        track.lat,
+        track.lng,
+        trackday.date,
+        settings.openWeatherApiKey
+      );
+      
+      const cache = await storage.setWeatherCache({
+        trackdayId: req.params.trackdayId,
+        fetchedAt: new Date().toISOString(),
+        ...weather,
+      });
+      
+      res.json(cache);
+    } catch (error) {
+      const errorType = (error as any).type || 'unknown';
+      console.error(`Weather refresh failed (${errorType}), attempting fallback:`, error instanceof Error ? error.message : String(error));
+      
+      // If we have stale cache, return it instead of failing
+      if (existingCache) {
+        console.log('Returning stale weather cache due to API failure');
+        res.json(existingCache);
+      } else {
+        // No cache exists, return mock data
+        console.log('No weather cache available, returning mock data');
+        const mockWeather = {
+          temperature: 18 + Math.round(Math.random() * 8),
+          rainChance: Math.round(Math.random() * 40),
+          windSpeed: 10 + Math.round(Math.random() * 15),
+          description: "partly cloudy",
+        };
+        
+        const cache = await storage.setWeatherCache({
+          trackdayId: req.params.trackdayId,
+          fetchedAt: new Date().toISOString(),
+          ...mockWeather,
+        });
+        
+        res.json(cache);
+      }
+    }
   });
 
   // ============ SUMMARY/ANALYTICS ============
@@ -2281,68 +2311,34 @@ async function calculateRoute(
   let googleMapsError: Error | null = null;
   let openRouteServiceError: Error | null = null;
   
-  // Try Google Maps first if API key is available (this matches navigation exactly!)
-  if (googleMapsApiKey) {
+  // Try Google Maps first if API key is available and circuit breaker is closed
+  if (googleMapsApiKey && isServiceAvailable('googleMaps')) {
     try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&key=${googleMapsApiKey}`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Google Maps API returned status ${response.status}`);
-      }
-      
-      const data = await response.json();
-      if (data.status === 'OK' && data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const leg = route.legs[0];
-        const distance = Math.round(leg.distance.value / 1000); // m to km
-        const duration = Math.round(leg.duration.value / 60); // s to min
-        
-        // Decode polyline to get route geometry
-        const polyline = route.overview_polyline.points;
-        const coordinates = decodePolyline(polyline);
-        const geometry = JSON.stringify(coordinates);
-        
-        console.log('Route calculated using Google Maps API');
-        return { distance, duration, geometry };
-      } else {
-        throw new Error(`Google Maps API returned status: ${data.status}`);
-      }
+      const result = await getGoogleDirections(fromLat, fromLng, toLat, toLng, googleMapsApiKey);
+      console.log('Route calculated using Google Maps API');
+      return result;
     } catch (error) {
       googleMapsError = error instanceof Error ? error : new Error(String(error));
-      console.error('Google Maps route calculation failed, will try OpenRouteService:', googleMapsError.message);
+      const errorType = (error as any).type || 'unknown';
+      console.error(`Google Maps route calculation failed (${errorType}), will try OpenRouteService:`, googleMapsError.message);
     }
+  } else if (googleMapsApiKey && !isServiceAvailable('googleMaps')) {
+    console.warn('Google Maps circuit breaker is open, skipping to OpenRouteService');
   }
   
-  // Try OpenRouteService if Google Maps failed or no key provided
-  if (openRouteServiceKey) {
+  // Try OpenRouteService if Google Maps failed or no key provided and circuit breaker is closed
+  if (openRouteServiceKey && isServiceAvailable('openRouteService')) {
     try {
-      const response = await fetch(
-        `https://api.openrouteservice.org/v2/directions/driving-car?start=${fromLng},${fromLat}&end=${toLng},${toLat}`,
-        {
-          headers: {
-            'Authorization': openRouteServiceKey,
-            'Accept': 'application/json',
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`OpenRouteService API returned status ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const distance = Math.round(data.features[0].properties.segments[0].distance / 1000); // m to km
-      const duration = Math.round(data.features[0].properties.segments[0].duration / 60); // s to min
-      const geometry = JSON.stringify(data.features[0].geometry.coordinates); // Array of [lng, lat] pairs
-      
+      const result = await getORSRoute(fromLat, fromLng, toLat, toLng, openRouteServiceKey);
       console.log('Route calculated using OpenRouteService API');
-      return { distance, duration, geometry };
+      return result;
     } catch (error) {
       openRouteServiceError = error instanceof Error ? error : new Error(String(error));
-      console.error('OpenRouteService route calculation failed, will use Haversine fallback:', openRouteServiceError.message);
+      const errorType = (error as any).type || 'unknown';
+      console.error(`OpenRouteService route calculation failed (${errorType}), will use Haversine fallback:`, openRouteServiceError.message);
     }
+  } else if (openRouteServiceKey && !isServiceAvailable('openRouteService')) {
+    console.warn('OpenRouteService circuit breaker is open, skipping to Haversine fallback');
   }
   
   // Fallback to Haversine calculation with simple straight line geometry
@@ -2404,6 +2400,7 @@ async function fetchWeather(
 ): Promise<{ temperature: number; rainChance: number; windSpeed: number; description: string }> {
   // If no API key, use mock data
   if (!apiKey) {
+    console.log('No OpenWeather API key configured, returning mock data');
     return {
       temperature: 18 + Math.round(Math.random() * 8),
       rainChance: Math.round(Math.random() * 40),
@@ -2412,33 +2409,13 @@ async function fetchWeather(
     };
   }
   
-  // Try to use OpenWeather API
-  try {
-    const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lng}&appid=${apiKey}&units=metric`
-    );
-    
-    if (!response.ok) throw new Error('API request failed');
-    
-    const data = await response.json();
-    // Find forecast closest to the date
-    const forecast = data.list[0]; // Simplified - would need to find closest date
-    
-    return {
-      temperature: Math.round(forecast.main.temp),
-      rainChance: Math.round((forecast.pop || 0) * 100),
-      windSpeed: Math.round(forecast.wind.speed * 3.6), // m/s to km/h
-      description: forecast.weather[0].description,
-    };
-  } catch (error) {
-    console.error('Weather fetch failed, using mock:', error);
-    return {
-      temperature: 18 + Math.round(Math.random() * 8),
-      rainChance: Math.round(Math.random() * 40),
-      windSpeed: 10 + Math.round(Math.random() * 15),
-      description: "partly cloudy",
-    };
+  // Check circuit breaker before attempting API call
+  if (!isServiceAvailable('openWeather')) {
+    throw new Error('OpenWeather circuit breaker is open');
   }
+  
+  // Use centralized API client with timeout and retry logic
+  return await getOpenWeatherForecast(lat, lng, apiKey);
 }
 
 function calculateHaversineDistance(
