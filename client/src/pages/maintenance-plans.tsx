@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, ListChecks, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2, ListChecks, ChevronRight, HelpCircle } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { useTutorial } from "@/components/tutorial-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -20,6 +21,7 @@ export default function MaintenancePlansPage() {
   const [selectedPlan, setSelectedPlan] = useState<MaintenancePlan | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { startTour } = useTutorial();
 
   const { data: plans, isLoading } = useQuery<MaintenancePlan[]>({
     queryKey: ["/api/maintenance-plans"],
@@ -121,19 +123,30 @@ export default function MaintenancePlansPage() {
             Create maintenance plan templates to track and organize your vehicle maintenance tasks
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()} data-testid="button-create-plan">
-              <Plus className="w-4 h-4" />
-              Create Plan
-            </Button>
-          </DialogTrigger>
-          <MaintenancePlanDialog
-            plan={selectedPlan}
-            onSubmit={handleCreateOrUpdate}
-            isPending={createPlanMutation.isPending || updatePlanMutation.isPending}
-          />
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => startTour('maintenance-plans')}
+            data-testid="button-maintenance-tutorial"
+          >
+            <HelpCircle className="w-4 h-4 mr-2" />
+            Tutorial
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpenDialog()} data-testid="button-create-plan">
+                <Plus className="w-4 h-4" />
+                Create Plan
+              </Button>
+            </DialogTrigger>
+            <MaintenancePlanDialog
+              plan={selectedPlan}
+              onSubmit={handleCreateOrUpdate}
+              isPending={createPlanMutation.isPending || updatePlanMutation.isPending}
+            />
+          </Dialog>
+        </div>
       </div>
 
       {templates.length > 0 && (

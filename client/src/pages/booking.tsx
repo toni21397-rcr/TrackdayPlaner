@@ -1,16 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Building2, Calendar, ArrowRight, Mail, Phone } from "lucide-react";
+import { ExternalLink, Building2, Calendar, ArrowRight, Mail, Phone, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
 import type { Organizer } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
+import { useTutorial } from "@/components/tutorial-provider";
 
 export default function Booking() {
   const { data: organizers, isLoading } = useQuery<Organizer[]>({
     queryKey: ["/api/organizers"],
   });
+  
+  const { startTour } = useTutorial();
 
   return (
     <div className="flex-1 overflow-auto">
@@ -23,6 +26,15 @@ export default function Booking() {
               Browse track organizers and book your next trackday
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => startTour('booking')}
+            data-testid="button-booking-tutorial"
+          >
+            <HelpCircle className="w-4 h-4 mr-2" />
+            Tutorial
+          </Button>
         </div>
 
         {/* Booking Grid */}

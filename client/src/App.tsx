@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
+import { TutorialProvider } from "@/components/tutorial-provider";
 import Dashboard from "@/pages/dashboard";
 import Trackdays from "@/pages/trackdays";
 import TrackdayDetail from "@/pages/trackday-detail";
@@ -69,8 +70,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <SidebarProvider style={style as React.CSSProperties}>
+        <TutorialProvider>
+          <TooltipProvider>
+            <SidebarProvider style={style as React.CSSProperties}>
             <div className="flex h-screen w-full">
               <AppSidebar />
               <div className="flex flex-col flex-1 overflow-hidden">
@@ -88,7 +90,8 @@ export default function App() {
             </div>
           </SidebarProvider>
           <Toaster />
-        </TooltipProvider>
+          </TooltipProvider>
+        </TutorialProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
