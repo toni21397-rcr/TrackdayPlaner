@@ -1313,35 +1313,32 @@ export class DbStorage implements IStorage {
 
   async bulkReplaceMotorcycleModels(models: InsertMotorcycleModel[]): Promise<void> {
     await this.ensureInitialized();
-    await this.db.transaction(async (tx) => {
-      await tx.delete(motorcycleModels);
-      
-      if (models.length > 0) {
-        await tx.insert(motorcycleModels).values(models);
-      }
-    });
+    // Neon HTTP driver doesn't support transactions, use sequential operations
+    await this.db.delete(motorcycleModels);
+    
+    if (models.length > 0) {
+      await this.db.insert(motorcycleModels).values(models);
+    }
   }
 
   async bulkReplaceTracks(tracksData: InsertTrack[]): Promise<void> {
     await this.ensureInitialized();
-    await this.db.transaction(async (tx) => {
-      await tx.delete(tracks);
-      
-      if (tracksData.length > 0) {
-        await tx.insert(tracks).values(tracksData);
-      }
-    });
+    // Neon HTTP driver doesn't support transactions, use sequential operations
+    await this.db.delete(tracks);
+    
+    if (tracksData.length > 0) {
+      await this.db.insert(tracks).values(tracksData);
+    }
   }
 
   async bulkReplaceOrganizers(organizersData: InsertOrganizer[]): Promise<void> {
     await this.ensureInitialized();
-    await this.db.transaction(async (tx) => {
-      await tx.delete(organizers);
-      
-      if (organizersData.length > 0) {
-        await tx.insert(organizers).values(organizersData);
-      }
-    });
+    // Neon HTTP driver doesn't support transactions, use sequential operations
+    await this.db.delete(organizers);
+    
+    if (organizersData.length > 0) {
+      await this.db.insert(organizers).values(organizersData);
+    }
   }
 }
 
