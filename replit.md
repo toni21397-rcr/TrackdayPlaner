@@ -73,3 +73,63 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication Provider
 - Replit Auth (OpenID Connect compatible for Google, GitHub).
+
+## Recent Scalability Improvements
+
+### Phase 1: Database & API Infrastructure (Completed)
+**Phase 1.1 - Database Indexing:**
+- Added 20+ indexes on frequently-queried columns (foreign keys, status fields, userId filters)
+- Significantly reduced query times for trackdays, cost items, vehicles, maintenance tasks, and marketplace listings
+
+**Phase 1.2 - Pagination Infrastructure:**
+- Implemented limit/offset pagination on all major list endpoints
+- Default 50 items per page, max 100 to prevent memory issues
+- Returns total count for client-side pagination UI
+
+**Phase 1.3 - Centralized API Client:**
+- Created `server/apiClient.ts` with exponential backoff retry logic (3 retries, 1s-4s delays)
+- Implemented circuit breaker pattern (5 failures threshold, 60s recovery)
+- Standardized error handling with AbortSignal support for timeout management
+- Used for weather API, routing API calls
+
+**Phase 1.4 - Weather Cache Improvements:**
+- Added TTL to weather cache entries (6-hour freshness window)
+- Automatic cleanup of stale entries (>30 days old, runs every 24h)
+- Graceful degradation: serves stale data when API fails, mock data only when cache empty
+
+**Phase 1.5 - Rate Limiting:**
+- Global rate limiter: 100 req/15min per IP
+- Auth rate limiter: 10 req/15min for login/logout/callback
+- Marketplace rate limiter: 20 req/15min for public endpoints
+- Weather rate limiter: 30 req/15min for weather queries
+- Returns 429 status with Retry-After headers, structured logging
+
+### Phase 2: Caching & Performance (In Progress)
+**Phase 2.1 - Analytics Caching (Completed):**
+- Implemented per-user in-memory cache for expensive analytics queries
+- Cache Types:
+  - `maintenanceAnalytics`: Aggregate statistics (total tasks, completion rate, priority breakdown)
+  - `enrichedTasks`: Full task list with vehicle/plan/checklist details
+- TTL: 5 minutes (balances freshness vs. performance)
+- Structured logging: JSON format with cache hits/misses/invalidations
+- Invalidation: Immediate on all maintenance/vehicle/plan mutations
+- Periodic cleanup: 15-minute interval removes expired entries
+- Performance: Reduces analytics endpoint from O(vehicles × tasks) to O(1) on cache hit
+
+**Phase 2.2 - Error Handling (Pending):**
+- Expand error handling across all routes with recovery patterns
+- Implement proper error responses with user-friendly messages
+
+**Phase 2.3 - Structured Logging (Pending):**
+- Implement observability across all services
+- Add structured logs for debugging and monitoring
+
+### Phase 3: Retention & Monitoring (Pending)
+**Phase 3.1 - Data Retention:**
+- Automated archival for old trackday/marketplace data
+
+**Phase 3.2 - Advanced Monitoring:**
+- Health checks and metrics collection
+
+**Phase 3.3 - Queue-Based Retry:**
+- Retry system for failed operations
