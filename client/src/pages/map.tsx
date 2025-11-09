@@ -21,6 +21,17 @@ interface TrackdayWithTrack extends Trackday {
   track?: Track;
 }
 
+interface Settings {
+  userId: string;
+  homeLat: number | null;
+  homeLng: number | null;
+  homeAddress: string | null;
+  preferredRouteService: string | null;
+  enableEmailNotifications: boolean;
+  enableInAppNotifications: boolean;
+  timezone: string | null;
+}
+
 export default function MapPage() {
   const [, setLocation] = useLocation();
   const [selectedYear, setSelectedYear] = useState<string>("all");
@@ -33,6 +44,10 @@ export default function MapPage() {
 
   const { data: trackdays, isLoading: trackdaysLoading } = useQuery<TrackdayWithTrack[]>({
     queryKey: ["/api/trackdays"],
+  });
+
+  const { data: settings } = useQuery<Settings>({
+    queryKey: ["/api/settings"],
   });
 
   // Extract unique years from trackdays
@@ -268,6 +283,21 @@ export default function MapPage() {
                     onTrackClick={handleTrackClick}
                     onTrackSelect={handleTrackSelect}
                     selectedTrackId={selectedTrackId}
+                    center={
+                      settings?.homeLat !== null && 
+                      settings?.homeLat !== undefined && 
+                      settings?.homeLng !== null && 
+                      settings?.homeLng !== undefined
+                        ? [settings.homeLat, settings.homeLng]
+                        : undefined
+                    }
+                    zoom={6}
+                    autoFitBounds={
+                      !(settings?.homeLat !== null && 
+                        settings?.homeLat !== undefined && 
+                        settings?.homeLng !== null && 
+                        settings?.homeLng !== undefined)
+                    }
                     className="rounded-b-lg overflow-hidden"
                   />
                   <TrackInfoPanel 

@@ -24,6 +24,7 @@ interface MapViewProps {
   selectedTrackId?: string | null;
   center?: [number, number];
   zoom?: number;
+  autoFitBounds?: boolean;
   className?: string;
 }
 
@@ -36,6 +37,7 @@ export function MapView({
   selectedTrackId = null,
   center = [46.8182, 8.2275], // Switzerland default
   zoom = 6,
+  autoFitBounds = true,
   className = "",
 }: MapViewProps) {
   const mapRef = useRef<L.Map | null>(null);
@@ -189,13 +191,15 @@ export function MapView({
       }
     });
 
-    // Fit bounds if we have markers or polylines
-    const allLayers = [...markersRef.current, ...polylinesRef.current];
-    if (allLayers.length > 0) {
-      const group = L.featureGroup(allLayers);
-      mapRef.current.fitBounds(group.getBounds().pad(0.1));
+    // Fit bounds if we have markers or polylines and autoFitBounds is enabled
+    if (autoFitBounds) {
+      const allLayers = [...markersRef.current, ...polylinesRef.current];
+      if (allLayers.length > 0) {
+        const group = L.featureGroup(allLayers);
+        mapRef.current.fitBounds(group.getBounds().pad(0.1));
+      }
     }
-  }, [tracks, trackdays, onTrackClick, onTrackdayClick]);
+  }, [tracks, trackdays, onTrackClick, onTrackdayClick, autoFitBounds]);
 
   return (
     <div
