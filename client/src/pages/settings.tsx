@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -22,12 +22,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { insertSettingsSchema, type InsertSettings, type Settings, insertNotificationPreferencesSchema, type InsertNotificationPreferences, type NotificationPreferences } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { MapPin, Navigation } from "lucide-react";
+
+// Haversine distance helper to check if location changed significantly (~1km tolerance)
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
 
 // Common timezones for the selector
 const TIMEZONES = [
@@ -47,6 +69,11 @@ export default function SettingsPage() {
   const [addressInput, setAddressInput] = useState("");
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [showRecalcDialog, setShowRecalcDialog] = useState(false);
+  const [trackdaysCount, setTrackdaysCount] = useState(0);
+  
+  // Store old location to detect changes
+  const oldLocationRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const { data: settings, isLoading } = useQuery<Settings>({
     queryKey: ["/api/settings"],
@@ -54,6 +81,12 @@ export default function SettingsPage() {
 
   const { data: notificationPrefs, isLoading: notificationPrefsLoading } = useQuery<NotificationPreferences>({
     queryKey: ["/api/notification-preferences"],
+  });
+
+  // Lazy query for trackdays count - only run when needed
+  const { refetch: fetchTrackdaysCount } = useQuery<{ count: number }>({
+    queryKey: ["/api/trackdays/with-routes/count"],
+    enabled: false,
   });
 
   const form = useForm<InsertSettings>({
@@ -85,9 +118,42 @@ export default function SettingsPage() {
     mutationFn: async (data: InsertSettings) => {
       return apiRequest("PUT", "/api/settings", data);
     },
-    onSuccess: () => {
+    onSuccess: async (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/summary"] });
+      
+      // Check if home location changed significantly
+      if (oldLocationRef.current && 
+          variables.homeLat !== null && variables.homeLat !== undefined && 
+          variables.homeLng !== null && variables.homeLng !== undefined) {
+        const distance = calculateDistance(
+          oldLocationRef.current.lat,
+          oldLocationRef.current.lng,
+          variables.homeLat,
+          variables.homeLng
+        );
+        
+        // If location changed by more than 1km, prompt to recalculate routes
+        if (distance >= 1) {
+          const result = await fetchTrackdaysCount();
+          const count = result.data?.count || 0;
+          
+          if (count > 0) {
+            setTrackdaysCount(count);
+            setShowRecalcDialog(true);
+            // Update ref with new location
+            oldLocationRef.current = { lat: variables.homeLat, lng: variables.homeLng };
+            return; // Don't show success toast yet, dialog will handle it
+          }
+        }
+      }
+      
+      // Update ref with new location
+      if (variables.homeLat !== null && variables.homeLat !== undefined && 
+          variables.homeLng !== null && variables.homeLng !== undefined) {
+        oldLocationRef.current = { lat: variables.homeLat, lng: variables.homeLng };
+      }
+      
       toast({
         title: "Settings saved",
         description: "Your settings have been updated successfully.",
@@ -97,6 +163,40 @@ export default function SettingsPage() {
       toast({
         title: "Error",
         description: "Failed to save settings. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Recalculate all routes mutation
+  const recalculateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/trackdays/recalculate-all-routes", {});
+      return response.json() as Promise<{ total: number; successCount: number; errorCount: number; errors?: Array<{ trackdayId: string; error: string }> }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/trackdays"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/summary"] });
+      setShowRecalcDialog(false);
+      
+      if (data.errorCount > 0) {
+        toast({
+          title: "Routes partially updated",
+          description: `${data.successCount} of ${data.total} routes recalculated successfully. ${data.errorCount} failed.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Routes updated",
+          description: `Successfully recalculated ${data.successCount} route${data.successCount !== 1 ? 's' : ''}.`,
+        });
+      }
+    },
+    onError: () => {
+      setShowRecalcDialog(false);
+      toast({
+        title: "Error",
+        description: "Failed to recalculate routes. Please try again later.",
         variant: "destructive",
       });
     },
@@ -130,6 +230,11 @@ export default function SettingsPage() {
   useEffect(() => {
     if (settings && !form.formState.isDirty) {
       form.reset(settings);
+      // Store initial location in ref
+      if (settings.homeLat !== null && settings.homeLat !== undefined && 
+          settings.homeLng !== null && settings.homeLng !== undefined) {
+        oldLocationRef.current = { lat: settings.homeLat, lng: settings.homeLng };
+      }
     }
   }, [settings, form]);
 
@@ -675,6 +780,39 @@ export default function SettingsPage() {
           </Card>
         )}
       </div>
+
+      {/* Route recalculation dialog */}
+      <AlertDialog open={showRecalcDialog} onOpenChange={setShowRecalcDialog}>
+        <AlertDialogContent data-testid="dialog-recalculate-routes">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Recalculate Routes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your home location has changed. Would you like to recalculate routes for {trackdaysCount} trackday{trackdaysCount !== 1 ? 's' : ''} with existing route data?
+              {trackdaysCount > 5 && " This may take a few moments."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              data-testid="button-recalc-later"
+              onClick={() => {
+                toast({
+                  title: "Settings saved",
+                  description: "You can recalculate routes later from individual trackday pages.",
+                });
+              }}
+            >
+              Do It Later
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-recalc-now"
+              onClick={() => recalculateMutation.mutate()}
+              disabled={recalculateMutation.isPending}
+            >
+              {recalculateMutation.isPending ? "Recalculating..." : "Recalculate Now"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

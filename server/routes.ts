@@ -350,6 +350,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(updated);
   });
 
+  // Count trackdays with route data
+  app.get("/api/trackdays/with-routes/count", isAuthenticated, async (req, res) => {
+    const trackdays = await storage.getTrackdays();
+    const count = trackdays.filter(td => td.routeDistance !== null).length;
+    res.json({ count });
+  });
+
   // Bulk route recalculation for all trackdays
   app.post("/api/trackdays/recalculate-all-routes", isAuthenticated, async (req, res) => {
     try {
