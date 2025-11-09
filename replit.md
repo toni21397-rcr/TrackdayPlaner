@@ -74,6 +74,48 @@ Preferred communication style: Simple, everyday language.
 ### Authentication Provider
 - Replit Auth (OpenID Connect compatible for Google, GitHub).
 
+### User Onboarding
+- **Tutorial System:** Driver.js-based interactive tours for key features.
+
+## User Onboarding & Tutorial System
+
+### Architecture
+- **Framework:** Driver.js (lightweight, framework-agnostic tour library)
+- **Provider:** TutorialProvider context at top level (client/src/components/tutorial-provider.tsx)
+- **Configuration:** Centralized tour definitions in client/src/lib/tutorials.ts
+- **Storage:** localStorage with key `trackday-tutorials.completed` for tracking completed tours
+- **Triggering:** Manual via Tutorial buttons on pages (HelpCircle icon, outline variant, small size)
+
+### Available Tours
+1. **Booking Tour** (id: 'booking')
+   - 4 steps covering organizer discovery, trackday viewing, and booking workflow
+   - Triggered by button on /booking page (data-testid="button-booking-tutorial")
+
+2. **Maintenance Plans Tour** (id: 'maintenance-plans')
+   - 5 steps explaining plan creation, assignment, and automated task generation
+   - Triggered by button on /maintenance-plans page (data-testid="button-maintenance-tutorial")
+
+3. **Maintenance Tasks Tour** (id: 'maintenance-tasks', planned)
+   - 5 steps covering task generation, filtering, completion, and snoozing
+   - Implementation pending
+
+### Driver.js Integration
+- **Theme:** Custom CSS in client/src/index.css with class `.trackday-tutorial-popover`
+- **Config:** showProgress=true, navigation buttons enabled, overlay with animations
+- **UI Elements:** Progress indicators ("1 of 4"), navigation ("Next →", "← Back", "Done!"), close button ("×")
+- **Behavior:** Spotlight effect on highlighted elements, semi-transparent overlay, localStorage persistence
+
+### Design Compliance
+- No emoji usage (strict adherence to design guidelines)
+- Matches Trackday Planner HSL color system, spacing, and typography
+- Responsive and accessible with keyboard navigation support
+
+### Implementation Notes
+- Tours can be replayed by clicking Tutorial button again
+- Gracefully handles missing elements (dynamic content not yet loaded)
+- Non-blocking: users can close tours at any time
+- MVP scope: Manual triggers only, no auto-play on first visit
+
 ## Recent Scalability Improvements
 
 ### Phase 1: Database & API Infrastructure (Completed)
