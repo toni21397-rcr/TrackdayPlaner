@@ -458,6 +458,14 @@ export const tracks = pgTable("tracks", {
   organizerName: text("organizer_name").notNull().default(""),
   organizerWebsite: text("organizer_website").notNull().default(""),
   createdBy: varchar("created_by"), // null = system/admin created, otherwise user ID
+  // Track details for info panel
+  summary: text("summary").notNull().default(""),
+  lengthKm: real("length_km"),
+  turns: integer("turns"),
+  surface: varchar("surface", { length: 50 }).notNull().default(""),
+  difficulty: varchar("difficulty", { length: 50 }).notNull().default(""),
+  facilities: text("facilities").array().notNull().default(sql`ARRAY[]::text[]`),
+  tips: text("tips").array().notNull().default(sql`ARRAY[]::text[]`),
 });
 
 export const trackdays = pgTable("trackdays", {
