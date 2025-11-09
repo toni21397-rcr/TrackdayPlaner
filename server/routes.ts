@@ -404,8 +404,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(vehicle);
   });
 
-  app.get("/api/vehicles", async (req, res) => {
-    const vehicles = await storage.getVehicles();
+  app.get("/api/vehicles", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const vehicles = await storage.getVehiclesByUserId(userId);
     
     // Populate maintenance logs
     const enriched = await Promise.all(vehicles.map(async (v) => {
