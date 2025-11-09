@@ -110,6 +110,7 @@ export interface IStorage {
   // Weather Cache
   getWeatherCache(trackdayId: string): Promise<WeatherCache | undefined>;
   setWeatherCache(data: WeatherCache): Promise<WeatherCache>;
+  cleanupOldWeatherCache(maxAgeDays: number): Promise<number>;
 
   // Users (Replit Auth integration)
   getUser(id: string): Promise<User | undefined>;
@@ -569,6 +570,23 @@ export class MemStorage implements IStorage {
     return data;
   }
 
+  async cleanupOldWeatherCache(maxAgeDays: number): Promise<number> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
+    const cutoffTime = cutoffDate.getTime();
+    
+    let removed = 0;
+    for (const [trackdayId, cache] of this.weatherCache.entries()) {
+      const fetchedTime = new Date(cache.fetchedAt).getTime();
+      if (fetchedTime < cutoffTime) {
+        this.weatherCache.delete(trackdayId);
+        removed++;
+      }
+    }
+    
+    return removed;
+  }
+
   // ========== USERS (Replit Auth integration) ==========
   async getUser(id: string): Promise<User | undefined> {
     throw new Error("User operations not implemented in MemStorage");
@@ -1013,6 +1031,20 @@ export class DbStorage implements IStorage {
       })
       .returning();
     return result[0];
+  }
+
+  async cleanupOldWeatherCache(maxAgeDays: number): Promise<number> {
+    await this.ensureInitialized();
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
+    const cutoffTimestamp = cutoffDate.toISOString();
+    
+    const result = await this.db
+      .delete(weatherCacheTable)
+      .where(drizzleSql`${weatherCacheTable.fetchedAt} < ${cutoffTimestamp}`)
+      .returning();
+    
+    return result.length;
   }
 
   // ========== USERS (Replit Auth integration) ==========

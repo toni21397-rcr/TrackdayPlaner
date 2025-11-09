@@ -6,6 +6,7 @@ import { isAdmin, canModifyResource } from "./adminMiddleware";
 import { seedTracks } from "./seed-tracks";
 import { seedMotorcycles } from "./seed-motorcycles";
 import { getGoogleDirections, getORSRoute, getOpenWeatherForecast, isServiceAvailable } from "./apiClient";
+import { ensureFreshCache } from "./weatherCacheMaintenance";
 import multer from "multer";
 import Papa from "papaparse";
 import {
@@ -687,15 +688,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============ WEATHER ============
   app.get("/api/weather/:trackdayId", async (req, res) => {
+    ensureFreshCache();
+    
     const cache = await storage.getWeatherCache(req.params.trackdayId);
     if (cache) {
-      res.json(cache);
+      const isStale = isWeatherCacheStale(cache.fetchedAt);
+      res.json({
+        ...cache,
+        isStale,
+        cacheAge: getCacheAge(cache.fetchedAt),
+      });
     } else {
       res.status(404).json({ error: "Weather not cached" });
     }
   });
 
   app.post("/api/weather/:trackdayId/refresh", isAuthenticated, async (req, res) => {
+    ensureFreshCache();
+    
     const trackday = await storage.getTrackday(req.params.trackdayId);
     if (!trackday) return res.status(404).json({ error: "Trackday not found" });
     
@@ -2433,4 +2443,30 @@ function calculateHaversineDistance(
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c);
+}
+
+const WEATHER_CACHE_TTL_HOURS = 6;
+const WEATHER_CACHE_MAX_AGE_DAYS = 30;
+
+function getCacheAgeHours(fetchedAt: string): number {
+  const fetchedDate = new Date(fetchedAt);
+  const now = new Date();
+  return (now.getTime() - fetchedDate.getTime()) / (1000 * 60 * 60);
+}
+
+function isWeatherCacheStale(fetchedAt: string): boolean {
+  return getCacheAgeHours(fetchedAt) >= WEATHER_CACHE_TTL_HOURS;
+}
+
+function getCacheAge(fetchedAt: string): { hours: number; minutes: number; isStale: boolean } {
+  const fetchedDate = new Date(fetchedAt);
+  const now = new Date();
+  const ageMs = now.getTime() - fetchedDate.getTime();
+  const hours = Math.floor(ageMs / (1000 * 60 * 60));
+  const minutes = Math.floor((ageMs % (1000 * 60 * 60)) / (1000 * 60));
+  return {
+    hours,
+    minutes,
+    isStale: getCacheAgeHours(fetchedAt) >= WEATHER_CACHE_TTL_HOURS,
+  };
 }
