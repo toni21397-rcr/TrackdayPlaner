@@ -350,6 +350,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(updated);
   });
 
+  // Bulk route recalculation for all trackdays
+  app.post("/api/trackdays/recalculate-all-routes", isAuthenticated, async (req, res) => {
+    try {
+      const trackdays = await storage.getTrackdays();
+      const settings = await storage.getSettings();
+      
+      // Filter trackdays that have route data (have been calculated before)
+      const trackdaysWithRoutes = trackdays.filter(td => td.routeDistance !== null);
+      
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: Array<{ trackdayId: string; error: string }> = [];
+      
+      for (const trackday of trackdaysWithRoutes) {
+        try {
+          const track = await storage.getTrack(trackday.trackId);
+          if (!track) {
+            errorCount++;
+            errors.push({ trackdayId: trackday.id, error: "Track not found" });
+            continue;
+          }
+          
+          const vehicle = trackday.vehicleId ? await storage.getVehicle(trackday.vehicleId) : null;
+          
+          // Calculate route
+          const routeData = await calculateRoute(
+            settings.homeLat,
+            settings.homeLng,
+            track.lat,
+            track.lng,
+            settings.googleMapsApiKey,
+            settings.openRouteServiceKey
+          );
+          
+          // Calculate costs
+          const distanceKm = routeData.distance;
+          const roundTripKm = distanceKm * 2;
+          
+          let fuelCostCents = 0;
+          if (vehicle && vehicle.fuelType !== "electric") {
+            const fuelNeeded = (roundTripKm / 100) * vehicle.consumptionPer100;
+            fuelCostCents = Math.round(fuelNeeded * settings.fuelPricePerLitre * 100);
+          }
+          
+          const tollsCostCents = Math.round(roundTripKm * settings.tollsPerKm * 100);
+          
+          // Update trackday with route data
+          await storage.updateTrackday(trackday.id, {
+            routeDistance: distanceKm,
+            routeDuration: routeData.duration,
+            routeFuelCost: fuelCostCents,
+            routeTollsCost: tollsCostCents,
+            routeGeometry: routeData.geometry,
+          });
+          
+          // Create/update auto-generated travel cost items
+          const existingCosts = await storage.getCostItems(trackday.id);
+          const autoTravelCosts = existingCosts.filter(c => c.isTravelAuto);
+          
+          // Delete old auto costs
+          for (const cost of autoTravelCosts) {
+            await storage.deleteCostItem(cost.id);
+          }
+          
+          // Create new auto costs
+          if (fuelCostCents > 0) {
+            await storage.createCostItem({
+              trackdayId: trackday.id,
+              type: "fuel",
+              amountCents: fuelCostCents,
+              currency: settings.currency,
+              status: "planned",
+              dueDate: null,
+              paidAt: null,
+              notes: "Auto-calculated fuel cost",
+              isTravelAuto: true,
+            });
+          }
+          
+          if (tollsCostCents > 0) {
+            await storage.createCostItem({
+              trackdayId: trackday.id,
+              type: "tolls",
+              amountCents: tollsCostCents,
+              currency: settings.currency,
+              status: "planned",
+              dueDate: null,
+              paidAt: null,
+              notes: "Auto-calculated tolls",
+              isTravelAuto: true,
+            });
+          }
+          
+          successCount++;
+        } catch (error: any) {
+          errorCount++;
+          errors.push({ trackdayId: trackday.id, error: error.message });
+        }
+      }
+      
+      res.json({
+        total: trackdaysWithRoutes.length,
+        successCount,
+        errorCount,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============ COST ITEMS ============
   app.get("/api/cost-items", async (req, res) => {
     const { trackdayId } = req.query;
