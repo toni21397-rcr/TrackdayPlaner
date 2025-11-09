@@ -48,6 +48,17 @@ Trackday Planner is a full-stack web application for motorsport enthusiasts to p
 
 **Production Readiness:** Core API routes, scheduling service, notification system, analytics endpoints, and all UI flows (plan creation, vehicle assignment, task management, analytics dashboard, in-app nudges, notification preferences) are secure and production-ready. Remaining work focuses on cron automation, packing lists, and comprehensive end-to-end testing.
 
+## Recent Updates (November 2025)
+
+**Interactive Track Info Panel**
+- Extended tracks schema with rich descriptive fields (summary, length, turns, surface, difficulty, facilities, tips)
+- Click track markers or track cards to open info panel showing detailed track information
+- Info panel displays: track overview, technical details (length, turns, surface), difficulty level, available facilities, and "nice to know" tips
+- Integrated trackdays section showing all trackdays for selected track with click-to-navigate
+- Responsive design: full-width on mobile, 384px drawer on desktop
+- Maintains backward compatibility with existing track data (new fields optional with defaults)
+- Fixed: Panel shows all trackdays regardless of year/status filters to ensure complete history
+
 ## Recent Updates (January 2025)
 
 **Searchable Motorcycle Selector**
