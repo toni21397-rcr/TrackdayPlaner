@@ -89,7 +89,7 @@ export function MarketplaceListingDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest("/api/marketplace/listings", "POST", data);
+      return await apiRequest("POST", "/api/marketplace/listings", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/listings"] });
@@ -111,7 +111,7 @@ export function MarketplaceListingDialog({
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest(`/api/marketplace/listings/${listing.id}`, "PATCH", data);
+      return await apiRequest("PATCH", `/api/marketplace/listings/${listing.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/listings"] });

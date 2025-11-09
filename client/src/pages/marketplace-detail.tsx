@@ -54,7 +54,7 @@ export default function MarketplaceDetail() {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/marketplace/listings/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/marketplace/listings/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/listings"] });
@@ -75,7 +75,7 @@ export default function MarketplaceDetail() {
 
   const markAsSoldMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/marketplace/listings/${id}`, "PATCH", { status: "sold" });
+      return await apiRequest("PATCH", `/api/marketplace/listings/${id}`, { status: "sold" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/listings", id] });
