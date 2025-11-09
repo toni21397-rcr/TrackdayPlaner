@@ -25,8 +25,8 @@ export class NotificationCoordinator {
     console.log("[NotificationCoordinator] Checking for tasks needing notifications...");
     
     // Get all due tasks that haven't been notified yet
-    const tasks = await this.storage.getMaintenanceTasks({ status: "due" });
-    const tasksToNotify = tasks.filter(task => 
+    const tasksResult = await this.storage.getMaintenanceTasks({ status: "due", limit: 10000 });
+    const tasksToNotify = tasksResult.items.filter(task => 
       !task.lastNotificationAt && // Never notified
       isBefore(task.dueAt, addDays(new Date(), 7)) // Due within 7 days
     );
@@ -284,8 +284,8 @@ You're receiving this email because you have maintenance tasks due. You can mana
   async sendOverdueReminders(): Promise<void> {
     console.log("[NotificationCoordinator] Checking for overdue tasks...");
     
-    const tasks = await this.storage.getMaintenanceTasks({ status: "due" });
-    const overdueTasks = tasks.filter(task => {
+    const tasksResult = await this.storage.getMaintenanceTasks({ status: "due", limit: 10000 });
+    const overdueTasks = tasksResult.items.filter(task => {
       if (!task.lastNotificationAt) return false;
       
       // Send reminder if task is overdue and last notification was > 3 days ago

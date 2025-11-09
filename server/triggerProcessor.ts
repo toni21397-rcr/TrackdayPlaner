@@ -61,7 +61,8 @@ export class TriggerProcessor {
     }
 
     // Get existing tasks to avoid duplicates
-    const existingTasks = await this.storage.getMaintenanceTasks({ vehiclePlanId: vehiclePlan.id });
+    const existingTasksResult = await this.storage.getMaintenanceTasks({ vehiclePlanId: vehiclePlan.id, limit: 10000 });
+    const existingTasks = existingTasksResult.items;
 
     // Process based on cadence type
     switch (plan.cadenceType) {
@@ -105,8 +106,8 @@ export class TriggerProcessor {
     if (!vehicle) return;
 
     // Get all trackdays for this vehicle
-    const allTrackdays = await this.storage.getTrackdays();
-    const vehicleTrackdays = allTrackdays
+    const allTrackdaysResult = await this.storage.getTrackdays({ limit: 10000 });
+    const vehicleTrackdays = allTrackdaysResult.items
       .filter((td: any) => td.vehicleId === vehicle.id)
       .sort((a: any, b: any) => a.date.localeCompare(b.date));
 
@@ -370,10 +371,10 @@ export class TriggerProcessor {
   async updateTaskStatuses(): Promise<void> {
     console.log("[TriggerProcessor] Updating task statuses...");
     
-    const allTasks = await this.storage.getMaintenanceTasks({ status: "pending" });
+    const allTasksResult = await this.storage.getMaintenanceTasks({ status: "pending", limit: 10000 });
     const now = new Date();
 
-    for (const task of allTasks) {
+    for (const task of allTasksResult.items) {
       if (task.status === "pending" && isBefore(task.dueAt, now)) {
         await this.storage.updateMaintenanceTask(task.id, { status: "due" });
         console.log(`[TriggerProcessor] Task ${task.id} is now due`);

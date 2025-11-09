@@ -208,13 +208,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============ TRACKDAYS ============
   app.get("/api/trackdays", async (req, res) => {
     const { year, participationStatus } = req.query;
-    const trackdays = await storage.getTrackdays({
+    const result = await storage.getTrackdays({
       year: year as string,
       participationStatus: participationStatus as string,
+      limit: 10000,
     });
     
     // Populate track and vehicle data
-    const enriched = await Promise.all(trackdays.map(async (td) => {
+    const enriched = await Promise.all(result.items.map(async (td) => {
       const track = await storage.getTrack(td.trackId);
       const vehicle = td.vehicleId ? await storage.getVehicle(td.vehicleId) : undefined;
       return { ...td, track, vehicle };
@@ -354,19 +355,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Count trackdays with route data
   app.get("/api/trackdays/with-routes/count", isAuthenticated, async (req, res) => {
-    const trackdays = await storage.getTrackdays();
-    const count = trackdays.filter(td => td.routeDistance !== null).length;
+    const result = await storage.getTrackdays({ limit: 10000 });
+    const count = result.items.filter(td => td.routeDistance !== null).length;
     res.json({ count });
   });
 
   // Bulk route recalculation for all trackdays
   app.post("/api/trackdays/recalculate-all-routes", isAuthenticated, async (req, res) => {
     try {
-      const trackdays = await storage.getTrackdays();
+      const result = await storage.getTrackdays({ limit: 10000 });
       const settings = await storage.getSettings();
       
       // Filter trackdays that have route data (have been calculated before)
-      const trackdaysWithRoutes = trackdays.filter(td => td.routeDistance !== null);
+      const trackdaysWithRoutes = result.items.filter(td => td.routeDistance !== null);
       
       let successCount = 0;
       let errorCount = 0;
@@ -526,10 +527,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/vehicles", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    const vehicles = await storage.getVehiclesByUserId(userId);
+    const result = await storage.getVehiclesByUserId(userId, { limit: 10000 });
     
     // Populate maintenance logs
-    const enriched = await Promise.all(vehicles.map(async (v) => {
+    const enriched = await Promise.all(result.items.map(async (v) => {
       const maintenance = await storage.getMaintenanceLogs(v.id);
       return { ...v, maintenance };
     }));
@@ -720,14 +721,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============ SUMMARY/ANALYTICS ============
   app.get("/api/summary/stats", async (req, res) => {
-    const trackdays = await storage.getTrackdays();
+    const result = await storage.getTrackdays({ limit: 10000 });
     const costItems = await storage.getCostItems();
     const maintenanceLogs = await storage.getMaintenanceLogs();
     const today = new Date().toISOString().split('T')[0];
     const currentYear = new Date().getFullYear().toString();
     
-    const thisYearTrackdays = trackdays.filter(td => td.date.startsWith(currentYear));
-    const upcomingTrackdays = trackdays.filter(td => 
+    const thisYearTrackdays = result.items.filter(td => td.date.startsWith(currentYear));
+    const upcomingTrackdays = result.items.filter(td => 
       td.date >= today && td.participationStatus !== "cancelled"
     );
     
@@ -821,11 +822,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/users", isAdmin, async (req, res) => {
     try {
       const users = await storage.getAllUsers();
-      const trackdays = await storage.getTrackdays();
+      const result = await storage.getTrackdays({ limit: 10000 });
       
       // Calculate activity stats for each user
       const usersWithStats = users.map(user => {
-        const userTrackdays = trackdays.filter(td => {
+        const userTrackdays = result.items.filter(td => {
           // This is a simplified version - in production you'd want to track user ownership of trackdays
           return true;
         });
@@ -870,7 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const users = await storage.getAllUsers();
       const tracks = await storage.getTracks();
       const organizers = await storage.getOrganizers();
-      const trackdays = await storage.getTrackdays();
+      const result = await storage.getTrackdays({ limit: 10000 });
       
       const systemTracks = tracks.filter(t => !t.createdBy);
       const userTracks = tracks.filter(t => t.createdBy);
@@ -1262,14 +1263,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const tasks = await storage.getMaintenanceTasks({ 
+      const result = await storage.getMaintenanceTasks({ 
         vehiclePlanId: vehiclePlanId as string,
         status: status as string,
-        vehicleId: vehicleId as string
+        vehicleId: vehicleId as string,
+        limit: 10000
       });
       
       const enrichedTasks = [];
-      for (const task of tasks) {
+      for (const task of result.items) {
         const vehiclePlan = await storage.getVehiclePlan(task.vehiclePlanId);
         if (vehiclePlan) {
           const vehicle = await storage.getVehicle(vehiclePlan.vehicleId);
@@ -1562,9 +1564,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
-      const userVehicles = await storage.getVehiclesByUserId(userId);
+      const vehiclesResult = await storage.getVehiclesByUserId(userId, { limit: 10000 });
       
-      if (userVehicles.length === 0) {
+      if (vehiclesResult.items.length === 0) {
         return res.json({
           totalTasks: 0,
           completedTasks: 0,
@@ -1578,13 +1580,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const allTasksPromises = userVehicles.map(v => storage.getMaintenanceTasks({ vehicleId: v.id }));
+      const allTasksPromises = vehiclesResult.items.map(v => storage.getMaintenanceTasks({ vehicleId: v.id, limit: 10000 }));
       const allTasksArrays = await Promise.all(allTasksPromises);
-      const userTasks = allTasksArrays.flat();
+      const userTasks = allTasksArrays.flatMap(result => result.items);
       
       const tasksByVehicleId = new Map<string, any[]>();
-      for (let i = 0; i < userVehicles.length; i++) {
-        tasksByVehicleId.set(userVehicles[i].id, allTasksArrays[i]);
+      for (let i = 0; i < vehiclesResult.items.length; i++) {
+        tasksByVehicleId.set(vehiclesResult.items[i].id, allTasksArrays[i].items);
       }
       
       const now = new Date();
@@ -1691,15 +1693,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = req.user;
       
-      const userVehicles = await storage.getVehiclesByUserId(userId);
+      const vehiclesResult = await storage.getVehiclesByUserId(userId, { limit: 10000 });
       
-      if (userVehicles.length === 0) {
+      if (vehiclesResult.items.length === 0) {
         return res.json([]);
       }
       
-      const allTasksPromises = userVehicles.map(v => storage.getMaintenanceTasks({ vehicleId: v.id }));
+      const allTasksPromises = vehiclesResult.items.map(v => storage.getMaintenanceTasks({ vehicleId: v.id, limit: 10000 }));
       const allTasksArrays = await Promise.all(allTasksPromises);
-      const userTasks = allTasksArrays.flat();
+      const userTasks = allTasksArrays.flatMap(result => result.items);
       
       if (userTasks.length === 0) {
         return res.json([]);
@@ -1724,7 +1726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allChecklistItems = allChecklistItemArrays.flat();
       const checklistItemMap = new Map(allChecklistItems.map(item => [item.id, item]));
       
-      const vehicleMap = new Map(userVehicles.map(v => [v.id, v]));
+      const vehicleMap = new Map(vehiclesResult.items.map(v => [v.id, v]));
       
       const enrichedTasks = [];
       
