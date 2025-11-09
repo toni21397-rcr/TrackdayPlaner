@@ -46,14 +46,27 @@ Trackday Planner is a full-stack web application for motorsport enthusiasts to p
 - ✅ **Loading States**: Button shows "Generating..." with spinning icon during processing
 - ✅ **Toast Notifications**: Success/error feedback for task generation
 
+**Phase 1 Enhanced Analytics (November 2025 - COMPLETE):**
+- ✅ **Overdue as First-Class Status**: Backend computes effectiveStatus and isOverdue for all tasks
+- ✅ **Interactive Charts**: Click pie chart segments or bar chart bars to filter task table
+- ✅ **Enriched Task Table**: Sortable/filterable with vehicle, plan name, checklist title, maintenance type, critical flag
+- ✅ **Performance**: Batch-loading eliminates N+1 queries (Maps for O(1) lookups)
+- ✅ **Smart Filtering**: Combine status + vehicle filters with visual filter badges
+- ✅ **6-Status Segmentation**: pending, due, overdue, snoozed, completed, dismissed (overdue shown in red)
+- ✅ **Bug Fix**: Fixed duplicate task returns in getMaintenanceTasks vehicleId filter
+- ✅ **API Endpoints**: 
+  - `/api/maintenance/analytics`: Aggregate analytics with overdue counts in tasksByStatus
+  - `/api/maintenance/analytics/tasks`: Enriched task list with effectiveStatus, isOverdue, and related data
+
 **Remaining Work:**
 - 🔨 Add cadenceConfig validation to enforce consistency with cadenceType
 - 🔨 Implement cron job scheduling for automated trigger processing (currently requires page visit or manual trigger)
-- 🔨 Optimize task enrichment (currently uses N+1 queries)
 - 🔨 Configure production email provider (Resend/Postmark/SendGrid)
 - 🔨 Create packing list generation/export
+- 🔨 Phase 2 Analytics: Time-based trend charts (completion over time, overdue trends)
+- 🔨 Phase 3 Analytics: Plan-level analytics, cost tracking integration
 
-**Production Readiness:** Core API routes, scheduling service, notification system, analytics endpoints, task generation (manual + auto), and all UI flows are secure and production-ready. Task generation works via manual button or auto-trigger on page visits. Remaining work focuses on cron automation for true background processing, query optimization, and email configuration.
+**Production Readiness:** Core API routes, scheduling service, notification system, Phase 1 analytics (interactive charts with overdue segmentation), task generation (manual + auto), and all UI flows are secure and production-ready. Task generation works via manual button or auto-trigger on page visits. Analytics properly treats overdue as a first-class dimension with drill-down capabilities. Remaining work focuses on cron automation, email configuration, and Phase 2/3 analytics features.
 
 ## Recent Updates (November 2025)
 
