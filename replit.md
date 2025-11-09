@@ -193,14 +193,13 @@ Preferred communication style: Simple, everyday language.
   - 1KB threshold, filters already-compressed content types
   - Expected 60-80% bandwidth reduction for JSON/HTML responses
 - **HTTP Cache Headers** (`server/cacheHeaders.ts`):
-  - Smart caching based on route patterns:
-    - Analytics/Summary: 60s cache, 120s stale-while-revalidate
-    - Organizers/Tracks: 300s public cache (rarely changes)
-    - Weather: 3600s public cache (expensive external API)
-    - General GET: 30s private cache
-    - Mutations: no-store (always fresh)
+  - Conservative caching strategy to prevent stale data issues:
+    - Weather: 30min cache (expensive external API, changes infrequently)
+    - All other GET requests: no-cache, must-revalidate (always check server first)
+    - Mutations: no-store (never cache)
+    - Vary: Cookie header for user-specific responses
   - Security headers: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
-  - Expected 30-80% latency reduction via client-side caching
+  - Balances freshness with performance for external API calls
 - **True LRU Cache Implementation** (`server/analyticsCache.ts`):
   - Fixed cache eviction from FIFO to proper LRU semantics
   - get() methods: Delete and re-insert to move entries to MRU position
