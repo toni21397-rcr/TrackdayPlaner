@@ -873,6 +873,66 @@ export const notificationPreferences = pgTable("notification_preferences", {
   quietHours: jsonb("quiet_hours").notNull().default('{}'),
 });
 
+// ============= MARKETPLACE =============
+
+export const MarketplaceCategory = {
+  BIKE: "bike",
+  PARTS_ENGINE: "parts_engine",
+  PARTS_SUSPENSION: "parts_suspension",
+  PARTS_BRAKES: "parts_brakes",
+  PARTS_BODYWORK: "parts_bodywork",
+  PARTS_ELECTRONICS: "parts_electronics",
+  GEAR_HELMET: "gear_helmet",
+  GEAR_SUIT: "gear_suit",
+  GEAR_GLOVES: "gear_gloves",
+  GEAR_BOOTS: "gear_boots",
+  ACCESSORIES: "accessories",
+  WANTED: "wanted",
+} as const;
+
+export const ItemCondition = {
+  NEW: "new",
+  LIKE_NEW: "like_new",
+  GOOD: "good",
+  FAIR: "fair",
+  FOR_PARTS: "for_parts",
+} as const;
+
+export const ListingStatus = {
+  ACTIVE: "active",
+  SOLD: "sold",
+  ARCHIVED: "archived",
+} as const;
+
+export const marketplaceListings = pgTable(
+  "marketplace_listings",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    sellerUserId: varchar("seller_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    category: varchar("category", { length: 50 }).notNull(),
+    condition: varchar("condition", { length: 20 }).notNull(),
+    priceCents: integer("price_cents").notNull(),
+    currency: varchar("currency", { length: 10 }).notNull().default("CHF"),
+    locationCity: varchar("location_city", { length: 100 }).notNull().default(""),
+    locationCountry: varchar("location_country", { length: 100 }).notNull().default(""),
+    contactEmail: varchar("contact_email", { length: 255 }).notNull(),
+    contactPhone: varchar("contact_phone", { length: 50 }).notNull().default(""),
+    description: text("description").notNull().default(""),
+    images: text("images").array().notNull().default(sql`ARRAY[]::text[]`),
+    status: varchar("status", { length: 20 }).notNull().default("active"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    vehicleId: varchar("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    index("IDX_marketplace_listings_seller").on(table.sellerUserId),
+    index("IDX_marketplace_listings_category_status").on(table.category, table.status),
+    index("IDX_marketplace_listings_created").on(table.createdAt),
+  ],
+);
+
 // ============= AUTHENTICATION =============
 // Replit Auth integration - Session storage table
 export const sessions = pgTable(
@@ -899,3 +959,19 @@ export const users = pgTable("users", {
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Marketplace Listings Schemas
+export const insertMarketplaceListingSchema = createInsertSchema(marketplaceListings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  expiresAt: true,
+});
+
+export const updateMarketplaceListingSchema = insertMarketplaceListingSchema.partial().extend({
+  status: z.enum(["active", "sold", "archived"]).optional(),
+});
+
+export type InsertMarketplaceListing = z.infer<typeof insertMarketplaceListingSchema>;
+export type UpdateMarketplaceListing = z.infer<typeof updateMarketplaceListingSchema>;
+export type MarketplaceListing = typeof marketplaceListings.$inferSelect;
