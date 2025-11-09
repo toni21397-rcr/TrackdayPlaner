@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startPeriodicCleanup } from "./weatherCacheMaintenance";
+import { startAnalyticsCacheCleanup } from "./analyticsCache";
 import { globalRateLimiter } from "./rateLimiting";
 
 const app = express();
@@ -82,5 +83,6 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
     startPeriodicCleanup();
+    startAnalyticsCacheCleanup();
   });
 })();

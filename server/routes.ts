@@ -8,6 +8,7 @@ import { seedMotorcycles } from "./seed-motorcycles";
 import { getGoogleDirections, getORSRoute, getOpenWeatherForecast, isServiceAvailable } from "./apiClient";
 import { ensureFreshCache } from "./weatherCacheMaintenance";
 import { weatherRateLimiter, externalApiRateLimiter } from "./rateLimiting";
+import { analyticsCache } from "./analyticsCache";
 import multer from "multer";
 import Papa from "papaparse";
 import {
@@ -546,6 +547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const data = insertVehicleSchema.parse({ ...req.body, userId });
       const vehicle = await storage.createVehicle(data);
+      analyticsCache.invalidateUser(userId);
       res.json(vehicle);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -558,15 +560,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertVehicleSchema.parse({ ...req.body, userId });
       const vehicle = await storage.updateVehicle(req.params.id, data);
       if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+      analyticsCache.invalidateUser(userId);
       res.json(vehicle);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/vehicles/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/vehicles/:id", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
     const deleted = await storage.deleteVehicle(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Vehicle not found" });
+    analyticsCache.invalidateUser(userId);
     res.json({ success: true });
   });
 
@@ -1230,6 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const plan = await storage.createVehiclePlan(data);
+      analyticsCache.invalidateUser(vehicle.userId);
       res.json(plan);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1252,6 +1258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const data = insertVehiclePlanSchema.partial().parse(req.body);
       const updated = await storage.updateVehiclePlan(req.params.id, data);
+      analyticsCache.invalidateUser(vehicle.userId);
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1273,6 +1280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteVehiclePlan(req.params.id);
+      analyticsCache.invalidateUser(vehicle.userId);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1384,6 +1392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const task = await storage.createMaintenanceTask(data);
+      analyticsCache.invalidateUser(vehicle.userId);
       res.json(task);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1413,6 +1422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data.dueAt = new Date(parsed.dueAt);
       }
       const updated = await storage.updateMaintenanceTask(req.params.id, data);
+      analyticsCache.invalidateUser(vehicle.userId);
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1437,6 +1447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.deleteMaintenanceTask(req.params.id);
+      analyticsCache.invalidateUser(vehicle.userId);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1474,6 +1485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payload: { newStatus: "snoozed", snoozedUntil },
       });
       
+      analyticsCache.invalidateUser(vehicle.userId);
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1510,6 +1522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payload: { newStatus: "completed", completionSource, maintenanceLogId },
       });
       
+      analyticsCache.invalidateUser(vehicle.userId);
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1542,6 +1555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payload: { newStatus: "dismissed" },
       });
       
+      analyticsCache.invalidateUser(vehicle.userId);
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1604,6 +1618,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/maintenance/analytics", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      const cached = analyticsCache.getMaintenanceAnalytics(userId);
+      if (cached) {
+        return res.json(cached);
+      }
       
       const vehiclesResult = await storage.getVehiclesByUserId(userId, { limit: 10000 });
       
@@ -1711,7 +1730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         });
       
-      res.json({
+      const result = {
         totalTasks,
         completedTasks: completedTasks.length,
         dismissedTasks: dismissedTasks.length,
@@ -1721,7 +1740,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         averageCompletionTimeDays: Math.round(averageCompletionTimeDays * 10) / 10,
         tasksByStatus,
         tasksByVehicle: tasksByVehicle.filter(v => v.totalTasks > 0),
-      });
+      };
+      
+      analyticsCache.setMaintenanceAnalytics(userId, result);
+      res.json(result);
     } catch (error: any) {
       console.error("Error fetching analytics:", error);
       res.status(500).json({ error: error.message });
@@ -1733,6 +1755,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = req.user;
+      
+      const cached = analyticsCache.getEnrichedTasks(userId);
+      if (cached) {
+        return res.json(cached);
+      }
       
       const vehiclesResult = await storage.getVehiclesByUserId(userId, { limit: 10000 });
       
@@ -1813,6 +1840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      analyticsCache.setEnrichedTasks(userId, enrichedTasks);
       res.json(enrichedTasks);
     } catch (error: any) {
       console.error("Error fetching enriched tasks:", error);
@@ -1829,6 +1857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await processor.processAllTriggers();
       await processor.updateTaskStatuses();
       
+      analyticsCache.invalidateAll();
       res.json({ success: true, message: "Trigger processing completed" });
     } catch (error: any) {
       console.error("Error processing triggers:", error);
