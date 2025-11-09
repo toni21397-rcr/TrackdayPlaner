@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -27,6 +27,7 @@ import { insertSettingsSchema, type InsertSettings, type Settings, insertNotific
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { MapPin, Navigation } from "lucide-react";
 
 // Common timezones for the selector
 const TIMEZONES = [
@@ -43,6 +44,9 @@ const TIMEZONES = [
 export default function SettingsPage() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [addressInput, setAddressInput] = useState("");
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   const { data: settings, isLoading } = useQuery<Settings>({
     queryKey: ["/api/settings"],
@@ -136,6 +140,111 @@ export default function SettingsPage() {
     }
   }, [notificationPrefs, notificationForm]);
 
+  const geocodeAddress = async (address: string) => {
+    if (!address.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter an address to search",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeocoding(true);
+    try {
+      const googleKey = form.getValues("googleMapsApiKey");
+      const orsKey = form.getValues("openRouteServiceKey");
+
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      if (googleKey) {
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googleKey}`
+        );
+        const data = await response.json();
+
+        if (data.status === "OK" && data.results.length > 0) {
+          lat = data.results[0].geometry.location.lat;
+          lng = data.results[0].geometry.location.lng;
+        } else {
+          throw new Error(data.status);
+        }
+      } else if (orsKey) {
+        const response = await fetch(
+          `https://api.openrouteservice.org/geocode/search?api_key=${orsKey}&text=${encodeURIComponent(address)}&size=1`
+        );
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+          lng = data.features[0].geometry.coordinates[0];
+          lat = data.features[0].geometry.coordinates[1];
+        } else {
+          throw new Error("No results found");
+        }
+      } else {
+        toast({
+          title: "API Key Required",
+          description: "Please configure Google Maps or OpenRouteService API key first",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (lat !== null && lng !== null) {
+        form.setValue("homeLat", lat);
+        form.setValue("homeLng", lng);
+        toast({
+          title: "Location found",
+          description: `Coordinates set to ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        });
+        setAddressInput("");
+      }
+    } catch (error) {
+      toast({
+        title: "Geocoding failed",
+        description: error instanceof Error ? error.message : "Could not find address",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Not supported",
+        description: "Your browser doesn't support geolocation",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        form.setValue("homeLat", lat);
+        form.setValue("homeLng", lng);
+        toast({
+          title: "Location updated",
+          description: `Current location set to ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        });
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        toast({
+          title: "Location access denied",
+          description: error.message || "Could not get your location",
+          variant: "destructive",
+        });
+        setIsGettingLocation(false);
+      }
+    );
+  };
+
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-3xl mx-auto p-6 md:p-8 space-y-6">
@@ -206,8 +315,49 @@ export default function SettingsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Home Location</CardTitle>
+                  <CardDescription>
+                    Set your starting point for route calculations
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter address (e.g., Zurich, Switzerland)"
+                        value={addressInput}
+                        onChange={(e) => setAddressInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            geocodeAddress(addressInput);
+                          }
+                        }}
+                        data-testid="input-address-search"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => geocodeAddress(addressInput)}
+                        disabled={isGeocoding}
+                        data-testid="button-search-address"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        {isGeocoding ? "Searching..." : "Search"}
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={useCurrentLocation}
+                      disabled={isGettingLocation}
+                      className="w-full"
+                      data-testid="button-use-current-location"
+                    >
+                      <Navigation className="h-4 w-4 mr-2" />
+                      {isGettingLocation ? "Getting location..." : "Use Current Location"}
+                    </Button>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -250,7 +400,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <FormDescription>
-                    Your starting location for route calculations (default: Zurich)
+                    Coordinates are auto-filled from address or location, but can be edited manually
                   </FormDescription>
                 </CardContent>
               </Card>
