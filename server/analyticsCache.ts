@@ -47,6 +47,7 @@ export class AnalyticsCache {
   private enrichedTasksCache = new Map<string, AnalyticsCacheEntry<EnrichedTask[]>>();
   
   private defaultTTL = 5 * 60 * 1000; // 5 minutes
+  private maxEntriesPerCache = 500; // Limit cache size to prevent memory bloat
   
   private getCacheKey(userId: string, type: 'analytics' | 'tasks'): string {
     return `${type}:${userId}`;
@@ -80,6 +81,9 @@ export class AnalyticsCache {
       return null;
     }
     
+    this.maintenanceAnalyticsCache.delete(key);
+    this.maintenanceAnalyticsCache.set(key, entry);
+    
     const cacheAge = new Date().getTime() - entry.fetchedAt.getTime();
     logger.debug('Analytics cache hit', {
       type: 'maintenanceAnalytics',
@@ -96,6 +100,23 @@ export class AnalyticsCache {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + this.defaultTTL);
     
+    const isUpdate = this.maintenanceAnalyticsCache.has(key);
+    
+    if (isUpdate) {
+      this.maintenanceAnalyticsCache.delete(key);
+    }
+    
+    if (this.maintenanceAnalyticsCache.size >= this.maxEntriesPerCache) {
+      const oldestKey = this.maintenanceAnalyticsCache.keys().next().value;
+      if (oldestKey) {
+        this.maintenanceAnalyticsCache.delete(oldestKey);
+        logger.debug('Analytics cache evicted (LRU)', {
+          type: 'maintenanceAnalytics',
+          evictedKey: oldestKey,
+        }, 'analyticsCache');
+      }
+    }
+    
     this.maintenanceAnalyticsCache.set(key, {
       data,
       fetchedAt: now,
@@ -107,6 +128,8 @@ export class AnalyticsCache {
       userId,
       ttlMs: this.defaultTTL,
       totalTasks: data.totalTasks,
+      cacheSize: this.maintenanceAnalyticsCache.size,
+      isUpdate,
     }, 'analyticsCache');
   }
   
@@ -134,6 +157,9 @@ export class AnalyticsCache {
       return null;
     }
     
+    this.enrichedTasksCache.delete(key);
+    this.enrichedTasksCache.set(key, entry);
+    
     const cacheAge = new Date().getTime() - entry.fetchedAt.getTime();
     logger.debug('Analytics cache hit', {
       type: 'enrichedTasks',
@@ -151,6 +177,23 @@ export class AnalyticsCache {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + this.defaultTTL);
     
+    const isUpdate = this.enrichedTasksCache.has(key);
+    
+    if (isUpdate) {
+      this.enrichedTasksCache.delete(key);
+    }
+    
+    if (this.enrichedTasksCache.size >= this.maxEntriesPerCache) {
+      const oldestKey = this.enrichedTasksCache.keys().next().value;
+      if (oldestKey) {
+        this.enrichedTasksCache.delete(oldestKey);
+        logger.debug('Analytics cache evicted (LRU)', {
+          type: 'enrichedTasks',
+          evictedKey: oldestKey,
+        }, 'analyticsCache');
+      }
+    }
+    
     this.enrichedTasksCache.set(key, {
       data,
       fetchedAt: now,
@@ -162,6 +205,8 @@ export class AnalyticsCache {
       userId,
       ttlMs: this.defaultTTL,
       taskCount: data.length,
+      cacheSize: this.enrichedTasksCache.size,
+      isUpdate,
     }, 'analyticsCache');
   }
   

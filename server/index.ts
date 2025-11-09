@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
+import compression from "compression";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startPeriodicCleanup } from "./weatherCacheMaintenance";
 import { startAnalyticsCacheCleanup } from "./analyticsCache";
 import { globalRateLimiter } from "./rateLimiting";
 import { errorHandler, notFoundHandler } from "./errorHandler";
+import { setCacheHeaders } from "./cacheHeaders";
 import { logger } from "./logger";
 import { randomBytes } from "crypto";
 
@@ -26,6 +28,19 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+  level: 6,
+  threshold: 1024,
+}));
+
+app.use(setCacheHeaders);
 
 app.use(globalRateLimiter);
 
