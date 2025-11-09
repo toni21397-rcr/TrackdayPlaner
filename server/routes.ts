@@ -1571,7 +1571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dueSoonTasks: 0,
           completionRate: 0,
           averageCompletionTimeDays: 0,
-          tasksByStatus: { pending: 0, due: 0, snoozed: 0, completed: 0, dismissed: 0 },
+          tasksByStatus: { pending: 0, due: 0, overdue: 0, snoozed: 0, completed: 0, dismissed: 0 },
           tasksByVehicle: [],
         });
       }
@@ -1632,10 +1632,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? (completedTasks.length / totalTasks) * 100
         : 0;
       
+      const pendingTasks = userTasks.filter(t => t.status === 'pending');
+      const dueTasks = userTasks.filter(t => t.status === 'due');
+      const snoozedTasks = userTasks.filter(t => t.status === 'snoozed');
+      
+      const overduePending = pendingTasks.filter(t => t.dueAt && new Date(t.dueAt) < now).length;
+      const overdueDue = dueTasks.filter(t => t.dueAt && new Date(t.dueAt) < now).length;
+      const overdueSnoozed = snoozedTasks.filter(t => t.dueAt && new Date(t.dueAt) < now).length;
+      const totalOverdue = overduePending + overdueDue + overdueSnoozed;
+      
       const tasksByStatus = {
-        pending: userTasks.filter(t => t.status === 'pending').length,
-        due: userTasks.filter(t => t.status === 'due').length,
-        snoozed: userTasks.filter(t => t.status === 'snoozed').length,
+        pending: pendingTasks.length - overduePending,
+        due: dueTasks.length - overdueDue,
+        overdue: totalOverdue,
+        snoozed: snoozedTasks.length - overdueSnoozed,
         completed: completedTasks.length,
         dismissed: dismissedTasks.length,
       };
@@ -1669,6 +1679,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error fetching analytics:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get enriched task list for analytics drill-down
+  app.get("/api/maintenance/analytics/tasks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = req.user;
+      
+      const userVehicles = await storage.getVehiclesByUserId(userId);
+      
+      if (userVehicles.length === 0) {
+        return res.json([]);
+      }
+      
+      const allTasksPromises = userVehicles.map(v => storage.getMaintenanceTasks({ vehicleId: v.id }));
+      const allTasksArrays = await Promise.all(allTasksPromises);
+      const userTasks = allTasksArrays.flat();
+      
+      if (userTasks.length === 0) {
+        return res.json([]);
+      }
+      
+      const uniqueVehiclePlanIds = Array.from(new Set(userTasks.map(t => t.vehiclePlanId)));
+      const vehiclePlans = await Promise.all(
+        uniqueVehiclePlanIds.map(id => storage.getVehiclePlan(id))
+      );
+      const vehiclePlanMap = new Map(vehiclePlans.filter(Boolean).map(vp => [vp!.id, vp]));
+      
+      const uniquePlanIds = Array.from(new Set(vehiclePlans.filter(Boolean).map(vp => vp!.planId)));
+      const plans = await Promise.all(
+        uniquePlanIds.map(id => storage.getMaintenancePlan(id))
+      );
+      const planMap = new Map(plans.filter(Boolean).map(p => [p!.id, p]));
+      
+      const allChecklistItemPromises = uniquePlanIds.map(planId => 
+        storage.getPlanChecklistItems(planId)
+      );
+      const allChecklistItemArrays = await Promise.all(allChecklistItemPromises);
+      const allChecklistItems = allChecklistItemArrays.flat();
+      const checklistItemMap = new Map(allChecklistItems.map(item => [item.id, item]));
+      
+      const vehicleMap = new Map(userVehicles.map(v => [v.id, v]));
+      
+      const enrichedTasks = [];
+      
+      for (const task of userTasks) {
+        const vehiclePlan = vehiclePlanMap.get(task.vehiclePlanId);
+        if (!vehiclePlan) continue;
+        
+        const vehicle = vehicleMap.get(vehiclePlan.vehicleId);
+        if (!vehicle || !canModifyResource(userId, vehicle.userId, user?.isAdmin || false)) {
+          continue;
+        }
+        
+        const plan = planMap.get(vehiclePlan.planId);
+        let checklistItemTitle = task.customTitle || "Untitled Task";
+        let maintenanceType = null;
+        let isCritical = false;
+        
+        if (task.checklistItemId) {
+          const checklistItem = checklistItemMap.get(task.checklistItemId);
+          if (checklistItem) {
+            checklistItemTitle = checklistItem.title;
+            maintenanceType = checklistItem.maintenanceType;
+            isCritical = checklistItem.isCritical;
+          }
+        }
+        
+        const now = new Date();
+        const isOverdue = task.dueAt && 
+          (task.status === 'pending' || task.status === 'due' || task.status === 'snoozed') && 
+          new Date(task.dueAt) < now;
+        
+        const effectiveStatus = isOverdue ? 'overdue' : task.status;
+        
+        enrichedTasks.push({
+          ...task,
+          vehicle,
+          planName: plan?.name || "Unknown Plan",
+          checklistItemTitle,
+          maintenanceType,
+          isCritical,
+          effectiveStatus,
+          isOverdue,
+        });
+      }
+      
+      res.json(enrichedTasks);
+    } catch (error: any) {
+      console.error("Error fetching enriched tasks:", error);
       res.status(500).json({ error: error.message });
     }
   });

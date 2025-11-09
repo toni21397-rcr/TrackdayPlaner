@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq, and, sql as drizzleSql } from "drizzle-orm";
+import { eq, and, inArray, sql as drizzleSql } from "drizzle-orm";
 import type {
   Organizer, InsertOrganizer,
   Track, InsertTrack,
@@ -1119,6 +1119,25 @@ export class DbStorage implements IStorage {
   // ========== MAINTENANCE TASKS ==========
   async getMaintenanceTasks(filters?: { vehiclePlanId?: string; status?: string; vehicleId?: string }): Promise<MaintenanceTask[]> {
     await this.ensureInitialized();
+    
+    if (filters?.vehicleId) {
+      const plans = await this.db.select().from(vehiclePlans).where(eq(vehiclePlans.vehicleId, filters.vehicleId));
+      const vehiclePlanIds = plans.map(vp => vp.id);
+      
+      if (vehiclePlanIds.length === 0) {
+        return [];
+      }
+      
+      const tasks = await this.db.select().from(maintenanceTasks).where(inArray(maintenanceTasks.vehiclePlanId, vehiclePlanIds));
+      
+      let filtered = tasks;
+      if (filters?.status) {
+        filtered = tasks.filter(t => t.status === filters.status);
+      }
+      
+      return filtered.sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()) as MaintenanceTask[];
+    }
+    
     let query = this.db.select().from(maintenanceTasks);
     
     if (filters?.vehiclePlanId) {
