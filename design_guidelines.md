@@ -226,6 +226,51 @@ Core Tailwind units: **2, 3, 4, 6, 8, 12, 16, 24**
 
 ---
 
+## Color System
+
+### Semantic Color Palette
+
+The application uses a semantic color system with HSL values for light/dark mode compatibility:
+
+**Core Colors:**
+- **Primary:** Brand color for main actions and highlights (blue-based)
+- **Destructive:** Error states and negative actions (red-based)
+- **Success:** Completion, positive trends, and successful states (green: 142 76% 36%)
+- **Warning:** Attention needed, pending actions (orange: 25 95% 53%)
+- **Info:** Informational states, registered status (blue: 221 83% 53%)
+
+**UI Colors:**
+- **Background:** Main page background
+- **Card:** Elevated surface background
+- **Muted:** Secondary backgrounds and disabled states
+- **Border:** Dividers and outlines
+
+**Text Hierarchy:**
+- **Foreground:** Primary text
+- **Muted Foreground:** Secondary text (60% opacity)
+
+### Color Usage Guidelines
+
+**Status Badges:**
+- Success: Completed tasks, attended events, paid invoices
+- Warning: Due tasks, pending invoices, attention needed
+- Info: Registered status, informational states, snoozed items
+- Destructive: Cancelled events, overdue tasks, refunded payments
+- Secondary: Planned events, future tasks
+
+**KPI Cards:**
+- Trend indicators use success (green) for positive, destructive (red) for negative
+- Icon badges use primary color with 10% opacity background
+- Subtle gradient background (from-card to-card/50) for depth
+
+**Design Principles:**
+- Color never sole indicator (always pair with icons or text for accessibility)
+- Semantic colors adapt automatically to light/dark themes
+- Use sparingly for maximum impact
+- Maintain WCAG AA contrast ratios in both themes
+
+---
+
 ## Accessibility
 
 - Consistent focus indicators throughout (ring-2 with offset)

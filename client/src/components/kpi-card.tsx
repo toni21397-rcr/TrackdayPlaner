@@ -14,7 +14,7 @@ interface KpiCardProps {
 
 export function KpiCard({ title, value, subtitle, icon: Icon, trend }: KpiCardProps) {
   return (
-    <Card className="hover-elevate border-l-4 border-l-primary/20">
+    <Card className="hover-elevate bg-gradient-to-br from-card to-card/50">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
