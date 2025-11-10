@@ -241,13 +241,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/trackdays", isAuthenticated, async (req, res) => {
     try {
-      console.log("Received trackday data:", JSON.stringify(req.body, null, 2));
       const data = insertTrackdaySchema.parse(req.body);
-      console.log("Validated trackday data:", JSON.stringify(data, null, 2));
       const trackday = await storage.createTrackday(data);
       res.json(trackday);
     } catch (error: any) {
-      console.log("Trackday creation error:", error);
       res.status(400).json({ error: error.message });
     }
   });
