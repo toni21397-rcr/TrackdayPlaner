@@ -184,17 +184,19 @@ export default function MaintenanceAnalytics() {
     setVehicleFilter(null);
   };
 
-  const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const getStatusBadgeVariant = (status: string): "success" | "warning" | "secondary" | "destructive" | "outline" | "info" => {
     switch (status) {
       case 'completed':
-        return 'default';
+        return 'success';
       case 'overdue':
       case 'dismissed':
         return 'destructive';
       case 'due':
-        return 'secondary';
+        return 'warning';
+      case 'snoozed':
+        return 'info';
       default:
-        return 'outline';
+        return 'secondary';
     }
   };
 

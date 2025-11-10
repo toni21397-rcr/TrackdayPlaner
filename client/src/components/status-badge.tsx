@@ -17,14 +17,13 @@ export function StatusBadge({ status, type }: StatusBadgeProps) {
       },
       [ParticipationStatus.REGISTERED]: {
         label: "Registered",
-        variant: "default" as const,
+        variant: "info" as const,
         icon: Clock,
       },
       [ParticipationStatus.ATTENDED]: {
         label: "Attended",
-        variant: "default" as const,
+        variant: "success" as const,
         icon: CheckCircle,
-        className: "bg-green-600 hover:bg-green-700 text-white",
       },
       [ParticipationStatus.CANCELLED]: {
         label: "Cancelled",
@@ -39,7 +38,7 @@ export function StatusBadge({ status, type }: StatusBadgeProps) {
     const Icon = config.icon;
 
     return (
-      <Badge variant={config.variant} className={config.className}>
+      <Badge variant={config.variant}>
         <Icon className="w-3 h-3 mr-1" />
         {config.label}
       </Badge>
@@ -54,12 +53,11 @@ export function StatusBadge({ status, type }: StatusBadgeProps) {
       },
       [PaymentStatus.INVOICED]: {
         label: "Invoiced",
-        variant: "outline" as const,
+        variant: "warning" as const,
       },
       [PaymentStatus.PAID]: {
         label: "Paid",
-        variant: "default" as const,
-        className: "bg-green-600 hover:bg-green-700 text-white",
+        variant: "success" as const,
       },
       [PaymentStatus.REFUNDED]: {
         label: "Refunded",
@@ -71,7 +69,7 @@ export function StatusBadge({ status, type }: StatusBadgeProps) {
     if (!config) return null;
 
     return (
-      <Badge variant={config.variant} className={config.className}>
+      <Badge variant={config.variant}>
         {config.label}
       </Badge>
     );
