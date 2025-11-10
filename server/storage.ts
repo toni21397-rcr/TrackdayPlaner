@@ -349,14 +349,14 @@ export class MemStorage implements IStorage {
     let trackdays = Array.from(this.trackdays.values());
     
     if (filters?.year && filters.year !== "all") {
-      trackdays = trackdays.filter(td => td.date.startsWith(filters.year!));
+      trackdays = trackdays.filter(td => td.startDate.startsWith(filters.year!));
     }
     
     if (filters?.participationStatus && filters.participationStatus !== "all") {
       trackdays = trackdays.filter(td => td.participationStatus === filters.participationStatus);
     }
     
-    trackdays.sort((a, b) => b.date.localeCompare(a.date));
+    trackdays.sort((a, b) => b.startDate.localeCompare(a.startDate));
     
     const total = trackdays.length;
     const offset = filters?.offset ?? 0;
@@ -373,8 +373,8 @@ export class MemStorage implements IStorage {
   async getUpcomingTrackdays(limit: number = 5): Promise<Trackday[]> {
     const today = new Date().toISOString().split('T')[0];
     return Array.from(this.trackdays.values())
-      .filter(td => td.date >= today && td.participationStatus !== "cancelled")
-      .sort((a, b) => a.date.localeCompare(b.date))
+      .filter(td => td.startDate >= today && td.participationStatus !== "cancelled")
+      .sort((a, b) => a.startDate.localeCompare(b.startDate))
       .slice(0, limit);
   }
 
@@ -768,7 +768,7 @@ export class DbStorage implements IStorage {
     
     const conditions = [];
     if (filters?.year && filters.year !== "all") {
-      conditions.push(drizzleSql`${trackdays.date} LIKE ${filters.year + '%'}`);
+      conditions.push(drizzleSql`${trackdays.startDate} LIKE ${filters.year + '%'}`);
     }
     if (filters?.participationStatus && filters.participationStatus !== "all") {
       conditions.push(eq(trackdays.participationStatus, filters.participationStatus));
@@ -789,7 +789,7 @@ export class DbStorage implements IStorage {
     const offset = filters?.offset ?? 0;
     const limit = filters?.limit ?? 50;
     
-    query = query.orderBy(desc(trackdays.date)).limit(limit).offset(offset);
+    query = query.orderBy(desc(trackdays.startDate)).limit(limit).offset(offset);
     
     const result = await query;
     
@@ -813,12 +813,12 @@ export class DbStorage implements IStorage {
       .from(trackdays)
       .where(
         and(
-          drizzleSql`${trackdays.date} >= ${today}`,
+          drizzleSql`${trackdays.startDate} >= ${today}`,
           drizzleSql`${trackdays.participationStatus} != 'cancelled'`
         )
       )
       .limit(limit);
-    return result.sort((a, b) => a.date.localeCompare(b.date)) as Trackday[];
+    return result.sort((a, b) => a.startDate.localeCompare(b.startDate)) as Trackday[];
   }
 
   async createTrackday(data: InsertTrackday): Promise<Trackday> {

@@ -182,7 +182,8 @@ export type InsertTrack = z.infer<typeof insertTrackSchema>;
 export interface Trackday {
   id: string;
   trackId: string;
-  date: string; // ISO date string
+  startDate: string; // ISO date string
+  endDate: string; // ISO date string
   durationDays: number;
   vehicleId: string | null;
   notes: string;
@@ -197,7 +198,8 @@ export interface Trackday {
 
 export const insertTrackdaySchema = z.object({
   trackId: z.string().min(1, "Track is required"),
-  date: z.string().min(1, "Date is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
   durationDays: z.number().min(1).max(30).default(1),
   vehicleId: z.string().nullable(),
   notes: z.string().default(""),
@@ -479,7 +481,8 @@ export const trackdays = pgTable(
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
     trackId: varchar("track_id").notNull().references(() => tracks.id, { onDelete: "cascade" }),
-    date: varchar("date", { length: 20 }).notNull(),
+    startDate: varchar("start_date", { length: 20 }).notNull(),
+    endDate: varchar("end_date", { length: 20 }).notNull(),
     durationDays: integer("duration_days").notNull().default(1),
     vehicleId: varchar("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
     notes: text("notes").notNull().default(""),
@@ -491,8 +494,8 @@ export const trackdays = pgTable(
     routeGeometry: text("route_geometry"),
   },
   (table) => [
-    index("IDX_trackdays_track_date").on(table.trackId, table.date),
-    index("IDX_trackdays_date").on(table.date),
+    index("IDX_trackdays_track_date").on(table.trackId, table.startDate),
+    index("IDX_trackdays_date").on(table.startDate),
     index("IDX_trackdays_vehicle").on(table.vehicleId),
     index("IDX_trackdays_status").on(table.participationStatus),
   ],
