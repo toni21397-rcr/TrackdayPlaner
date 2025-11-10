@@ -38,11 +38,11 @@ export function BudgetProgress({
           </div>
           <div className="relative h-10 w-full rounded-lg bg-muted overflow-hidden">
             <div
-              className="absolute inset-y-0 left-0 bg-green-600"
+              className="absolute inset-y-0 left-0 bg-cyan-600"
               style={{ width: `${Math.min(spentPercentage, 100)}%` }}
             />
             <div
-              className="absolute inset-y-0 left-0 bg-blue-400 opacity-50"
+              className="absolute inset-y-0 left-0 bg-cyan-400 opacity-50"
               style={{ width: `${Math.min(projectedPercentage, 100)}%` }}
             />
             <div className="absolute inset-0 flex items-center justify-between px-3 text-xs font-medium">
