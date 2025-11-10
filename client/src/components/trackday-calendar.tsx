@@ -61,18 +61,72 @@ const getStatusLabel = (status: string) => {
   return status.charAt(0).toUpperCase() + status.slice(1);
 };
 
-// Fun empty state messages
-const getRandomEmptyMessage = (monthName: string) => {
-  const messages = [
-    `Your wife doesn't know it yet but maybe you'll be racing in ${monthName}`,
-    `No trackdays planned yet - keep your bike warm or it will miss you`,
-    `${monthName} is looking lonely - time to book some track action`,
-    `Your motorcycle is getting dusty in ${monthName}`,
-    `No races scheduled - but there's still time to surprise yourself in ${monthName}`,
-    `Empty calendar in ${monthName}? Your bike is giving you the silent treatment`,
-    `${monthName} needs more speed - no trackdays booked yet`,
+// Fun empty state messages (28 unique messages with seasonal themes)
+const getRandomEmptyMessage = (monthName: string, year: number) => {
+  const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
+  
+  // Seasonal messages for winter months (Dec, Jan, Feb)
+  const winterMessages = [
+    `Your bike's ${monthName} wish list: A track day. Just one. Please`,
+    `${monthName}: Perfect weather for hot chocolate and cold tires apparently`,
+    `Santa checked twice - still no trackdays in ${monthName}. You're on the naughty list`,
+    `${monthName} hibernation mode: Your bike is dreaming of summer apex speeds`,
+    `New Year's resolution: Book at least ONE trackday in ${monthName}. Baby steps`,
+    `${monthName}: When your bike asked Santa for track time, Santa ghosted it`,
+    `Winter wonderland? More like winter "wonder when we'll ride again" land`,
+    `${monthName} status: Your bike is writing a strongly worded letter to management`,
   ];
-  return messages[Math.floor(Math.random() * messages.length)];
+  
+  // Spring messages (Mar, Apr, May)
+  const springMessages = [
+    `${monthName} called - spring has sprung and your bike is stretching after its winter nap`,
+    `Plot twist: ${monthName} is perfect riding weather but here we are, calendars emptier than your fuel tank`,
+    `Your bike: "It's ${monthName}, I thought we had plans?" You: *nervous sweating*`,
+    `${monthName} - officially too nice outside to justify this empty calendar`,
+    `Spring has sprung in ${monthName}, but apparently your riding schedule hasn't`,
+    `${monthName} forecast: Sunny with scattered disappointment from your motorcycle`,
+  ];
+  
+  // Summer messages (Jun, Jul, Aug)
+  const summerMessages = [
+    `It's ${monthName}. PRIME track season. And yet here we are, staring at this empty calendar`,
+    `${monthName}: When everyone else is posting track photos and you're posting... nothing`,
+    `Your bike in ${monthName}: "So we're just gonna let peak season pass us by? Cool cool cool"`,
+    `Breaking: Local rider discovers ${monthName} exists but forgets motorcycles do too`,
+    `${monthName} - The month your bike learned what betrayal feels like`,
+    `Fun fact: ${monthName} has 30 days of perfect track weather. You've booked 0 of them`,
+  ];
+  
+  // Fall messages (Sep, Oct, Nov)
+  const fallMessages = [
+    `${monthName}: Last call for track days before hibernation season. Your bike is giving you The Look`,
+    `${monthName} - When your bike realizes winter is coming and you STILL haven't booked anything`,
+    `Plot twist: ${monthName} could've been your redemption arc. Could've been`,
+    `Your bike's ${monthName} mood: Passive aggressive with a chance of giving up on you entirely`,
+    `${monthName} - The month your bike started updating its resume`,
+    `Fall colors in ${monthName} are beautiful. Know what would be more beautiful? A BOOKED TRACKDAY`,
+  ];
+  
+  // Determine which season based on month
+  let seasonalMessages;
+  if (monthIndex === 11 || monthIndex === 0 || monthIndex === 1) {
+    // Dec, Jan, Feb - Winter
+    seasonalMessages = winterMessages;
+  } else if (monthIndex >= 2 && monthIndex <= 4) {
+    // Mar, Apr, May - Spring
+    seasonalMessages = springMessages;
+  } else if (monthIndex >= 5 && monthIndex <= 7) {
+    // Jun, Jul, Aug - Summer
+    seasonalMessages = summerMessages;
+  } else {
+    // Sep, Oct, Nov - Fall
+    seasonalMessages = fallMessages;
+  }
+  
+  // Use month and year to deterministically pick a message (no repeats in same year)
+  const offset = year % 3; // Cycle through message variations every 3 years
+  const index = (monthIndex + offset) % seasonalMessages.length;
+  return seasonalMessages[index];
 };
 
 interface TrackdayCalendarProps {
@@ -176,6 +230,7 @@ export function TrackdayCalendar({ trackdays = [], isLoading }: TrackdayCalendar
     const monthTrackdays = getTrackdaysForMonth(month);
     const monthTasks = getMaintenanceTasksForMonth(month);
     const monthName = format(month, "MMMM");
+    const year = month.getFullYear();
     const hasContent = monthTrackdays.length > 0 || monthTasks.length > 0;
 
     if (!hasContent) {
@@ -184,7 +239,7 @@ export function TrackdayCalendar({ trackdays = [], isLoading }: TrackdayCalendar
           "text-center text-muted-foreground italic",
           isCompact ? "py-4 text-xs" : "py-8"
         )}>
-          {getRandomEmptyMessage(monthName)}
+          {getRandomEmptyMessage(monthName, year)}
         </div>
       );
     }
@@ -253,10 +308,10 @@ export function TrackdayCalendar({ trackdays = [], isLoading }: TrackdayCalendar
                       {trackday.track.name}
                     </div>
 
-                    {!isCompact && trackday.track.location && (
+                    {!isCompact && trackday.track.country && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <MapPin className="h-3 w-3" />
-                        <span>{trackday.track.location}</span>
+                        <span>{trackday.track.country}</span>
                       </div>
                     )}
                   </div>
