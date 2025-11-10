@@ -46,6 +46,7 @@ Preferred communication style: Simple, everyday language.
 - **Query Optimization:** Utilities for batch inserts/updates and generic TTL-based query caching.
 - **User Onboarding:** Driver.js-based interactive tours for key features.
 - **Trackday Calendar:** Supports `startDate` + `endDate` for multi-day events, month/year views, integration with maintenance tasks, and dynamic empty state messages.
+- **Single Source of Truth (SSOT):** Trackday duration is computed on-the-fly from `startDate` and `endDate` using `calculateDurationDays()` utility (`shared/utils.ts`). The `durationDays` field is not persisted in the database but is added to all API responses via the `addDurationDays()` helper in the storage layer. This eliminates data duplication and ensures dates are the canonical source of truth. Uses `parseISO()` from `date-fns` to avoid timezone drift.
 
 ## External Dependencies
 
