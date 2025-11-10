@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, ExternalLink, AlertTriangle, Plus, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, ExternalLink, AlertTriangle, Plus, Check, ChevronsUpDown, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { format, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
@@ -71,8 +73,8 @@ export default function BookingDetail() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       trackId: "",
-      date: "",
-      durationDays: 1,
+      startDate: format(new Date(), 'yyyy-MM-dd'),
+      endDate: format(new Date(), 'yyyy-MM-dd'),
       vehicleId: null,
       participationStatus: "planned",
       notes: "",
@@ -331,36 +333,92 @@ export default function BookingDetail() {
                       )}
                     />
 
-                    {/* Date */}
+                    {/* Start Date */}
                     <FormField
                       control={form.control}
-                      name="date"
+                      name="startDate"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} data-testid="input-date" />
-                          </FormControl>
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Start Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                  data-testid="button-start-date"
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value ? format(parseISO(field.value), "PPP") : "Pick a date"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value ? parseISO(field.value) : undefined}
+                                onSelect={(date) => {
+                                  const dateStr = date ? format(date, 'yyyy-MM-dd') : "";
+                                  field.onChange(dateStr);
+                                  
+                                  // Auto-update end date if it's before the new start date
+                                  const currentEndDate = form.getValues("endDate");
+                                  if (!currentEndDate || currentEndDate < (dateStr || "")) {
+                                    form.setValue("endDate", dateStr || "");
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    {/* Duration */}
+                    {/* End Date */}
                     <FormField
                       control={form.control}
-                      name="durationDays"
+                      name="endDate"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Duration (days)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
-                              data-testid="input-duration"
-                            />
-                          </FormControl>
+                        <FormItem className="flex flex-col">
+                          <FormLabel>End Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                  data-testid="button-end-date"
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value ? format(parseISO(field.value), "PPP") : "Pick a date"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value ? parseISO(field.value) : undefined}
+                                onSelect={(date) => {
+                                  const dateStr = date ? format(date, 'yyyy-MM-dd') : "";
+                                  field.onChange(dateStr);
+                                }}
+                                disabled={(date) => {
+                                  const startDate = form.getValues("startDate");
+                                  if (!startDate) return false;
+                                  return format(date, 'yyyy-MM-dd') < startDate;
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
