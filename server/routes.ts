@@ -717,7 +717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const weather = await fetchWeather(
         track.lat,
         track.lng,
-        trackday.date,
+        trackday.startDate,
         settings.openWeatherApiKey
       );
       
@@ -765,9 +765,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const today = new Date().toISOString().split('T')[0];
     const currentYear = new Date().getFullYear().toString();
     
-    const thisYearTrackdays = result.items.filter(td => td.date.startsWith(currentYear));
+    const thisYearTrackdays = result.items.filter(td => td.startDate.startsWith(currentYear));
     const upcomingTrackdays = result.items.filter(td => 
-      td.date >= today && td.participationStatus !== "cancelled"
+      td.startDate >= today && td.participationStatus !== "cancelled"
     );
     
     const paidCosts = costItems.filter(c => c.status === "paid");

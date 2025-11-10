@@ -93,13 +93,13 @@ export default function TrackdayDetail() {
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col items-center justify-center bg-primary/10 text-primary rounded-md p-2 min-w-[3.5rem]">
                     <div className="text-sm font-mono font-semibold">
-                      {format(new Date(trackday.date), "MMM")}
+                      {format(new Date(trackday.startDate), "MMM")}
                     </div>
                     <div className="text-2xl font-mono font-bold">
-                      {format(new Date(trackday.date), "dd")}
+                      {format(new Date(trackday.startDate), "dd")}
                     </div>
                     <div className="text-xs font-mono">
-                      {format(new Date(trackday.date), "yyyy")}
+                      {format(new Date(trackday.startDate), "yyyy")}
                     </div>
                   </div>
                   <div>
@@ -184,7 +184,7 @@ export default function TrackdayDetail() {
           </TabsContent>
 
           <TabsContent value="weather">
-            <WeatherTab trackdayId={trackday.id} date={trackday.date} />
+            <WeatherTab trackdayId={trackday.id} date={trackday.startDate} />
           </TabsContent>
 
           <TabsContent value="timeline">

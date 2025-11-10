@@ -54,7 +54,7 @@ export default function MapPage() {
   const years = useMemo(() => {
     if (!trackdays) return [];
     const yearSet = new Set(
-      trackdays.map((td) => new Date(td.date).getFullYear().toString())
+      trackdays.map((td) => new Date(td.startDate).getFullYear().toString())
     );
     return Array.from(yearSet).sort((a, b) => parseInt(b) - parseInt(a));
   }, [trackdays]);
@@ -65,7 +65,7 @@ export default function MapPage() {
 
     return trackdays.filter((td) => {
       const yearMatch =
-        selectedYear === "all" || new Date(td.date).getFullYear().toString() === selectedYear;
+        selectedYear === "all" || new Date(td.startDate).getFullYear().toString() === selectedYear;
       const statusMatch = selectedStatus === "all" || td.participationStatus === selectedStatus;
       return yearMatch && statusMatch;
     });

@@ -116,7 +116,7 @@ export class TriggerProcessor {
     const allTrackdaysResult = await this.storage.getTrackdays({ limit: 10000 });
     const vehicleTrackdays = allTrackdaysResult.items
       .filter((td: any) => td.vehicleId === vehicle.id)
-      .sort((a: any, b: any) => a.date.localeCompare(b.date));
+      .sort((a: any, b: any) => a.startDate.localeCompare(b.startDate));
 
     const activationDate = parseISO(vehiclePlan.activationDate);
     const now = new Date();
@@ -124,7 +124,7 @@ export class TriggerProcessor {
     // Count PAST/COMPLETED trackdays since activation (only those in the past)
     const completedTrackdays = vehicleTrackdays
       .filter((td: any) => {
-        const tdDate = parseISO(td.date);
+        const tdDate = parseISO(td.startDate);
         return isAfter(tdDate, activationDate) && isBefore(tdDate, now);
       });
     
@@ -132,7 +132,7 @@ export class TriggerProcessor {
 
     // Get upcoming trackdays (in the future)
     const upcomingTrackdays = vehicleTrackdays
-      .filter((td: any) => isAfter(parseISO(td.date), now));
+      .filter((td: any) => isAfter(parseISO(td.startDate), now));
 
     // Calculate when next maintenance is due
     // If completedCount is exactly a multiple of afterEveryN (and > 0), maintenance is due NOW (next trackday)
@@ -166,7 +166,7 @@ export class TriggerProcessor {
 
         if (!taskExists) {
           // Calculate due date based on offset
-          const trackdayDate = parseISO(triggerTrackday.date);
+          const trackdayDate = parseISO(triggerTrackday.startDate);
           const dueDate = addDays(trackdayDate, item.defaultDueOffset.days || 0);
 
           await this.createTask(vehiclePlan.id, item, dueDate, {

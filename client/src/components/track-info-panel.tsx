@@ -185,7 +185,7 @@ export function TrackInfoPanel({ track, trackdays = [], onClose, onTrackdayClick
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">
-                          {format(new Date(trackday.date), "MMM d, yyyy")}
+                          {format(new Date(trackday.startDate), "MMM d, yyyy")}
                         </div>
                         {trackday.notes && (
                           <div className="text-xs text-muted-foreground truncate mt-1">

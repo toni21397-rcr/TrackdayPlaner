@@ -380,7 +380,21 @@ export class MemStorage implements IStorage {
 
   async createTrackday(data: InsertTrackday): Promise<Trackday> {
     const id = randomUUID();
-    const trackday: Trackday = { ...data, id };
+    // Validate date range
+    if (data.endDate < data.startDate) {
+      throw new Error("End date must be on or after start date");
+    }
+    
+    // Calculate duration from date range
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+    const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const trackday: Trackday = { 
+      ...data, 
+      id,
+      durationDays,
+    };
     this.trackdays.set(id, trackday);
     return trackday;
   }
@@ -388,7 +402,21 @@ export class MemStorage implements IStorage {
   async updateTrackday(id: string, data: Partial<Trackday>): Promise<Trackday | undefined> {
     const existing = this.trackdays.get(id);
     if (!existing) return undefined;
-    const trackday = { ...existing, ...data, id };
+    
+    // Merge updates
+    const updatedData = { ...existing, ...data };
+    
+    // Validate date range
+    if (updatedData.endDate < updatedData.startDate) {
+      throw new Error("End date must be on or after start date");
+    }
+    
+    // Recalculate duration
+    const startDate = new Date(updatedData.startDate);
+    const endDate = new Date(updatedData.endDate);
+    const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const trackday = { ...updatedData, id, durationDays };
     this.trackdays.set(id, trackday);
     return trackday;
   }
@@ -823,13 +851,46 @@ export class DbStorage implements IStorage {
 
   async createTrackday(data: InsertTrackday): Promise<Trackday> {
     await this.ensureInitialized();
-    const result = await this.db.insert(trackdays).values(data).returning();
+    // Validate date range
+    if (data.endDate < data.startDate) {
+      throw new Error("End date must be on or after start date");
+    }
+    
+    // Calculate duration from date range
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+    const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const result = await this.db.insert(trackdays).values({
+      ...data,
+      durationDays,
+    }).returning();
     return result[0] as Trackday;
   }
 
   async updateTrackday(id: string, data: Partial<Trackday>): Promise<Trackday | undefined> {
     await this.ensureInitialized();
-    const result = await this.db.update(trackdays).set(data).where(eq(trackdays.id, id)).returning();
+    // Get existing trackday to check if we need to recalculate duration
+    const existing = await this.getTrackday(id);
+    if (!existing) return undefined;
+    
+    // Merge updates
+    const updatedStartDate = data.startDate || existing.startDate;
+    const updatedEndDate = data.endDate || existing.endDate;
+    
+    // Validate date range
+    if (updatedEndDate < updatedStartDate) {
+      throw new Error("End date must be on or after start date");
+    }
+    
+    // Recalculate duration
+    const startDate = new Date(updatedStartDate);
+    const endDate = new Date(updatedEndDate);
+    const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const updateData: any = { ...data, durationDays };
+    
+    const result = await this.db.update(trackdays).set(updateData).where(eq(trackdays.id, id)).returning();
     return result[0] as Trackday | undefined;
   }
 

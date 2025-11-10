@@ -155,10 +155,10 @@ export default function Trackdays() {
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col items-center justify-center bg-primary/10 text-primary rounded-md p-2 min-w-[3rem]">
                             <div className="text-sm font-mono font-semibold">
-                              {format(new Date(trackday.date), "MMM")}
+                              {format(new Date(trackday.startDate), "MMM")}
                             </div>
                             <div className="text-2xl font-mono font-bold">
-                              {format(new Date(trackday.date), "dd")}
+                              {format(new Date(trackday.startDate), "dd")}
                             </div>
                           </div>
                           <div>

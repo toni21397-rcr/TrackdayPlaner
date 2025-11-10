@@ -85,7 +85,8 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
     resolver: zodResolver(formSchema),
     defaultValues: trackday ? {
       trackId: trackday.trackId,
-      date: trackday.date,
+      startDate: trackday.startDate,
+      endDate: trackday.endDate,
       durationDays: trackday.durationDays,
       vehicleId: trackday.vehicleId,
       notes: trackday.notes,
@@ -93,7 +94,8 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
       entryFeeCents: undefined,
     } : {
       trackId: "",
-      date: new Date().toISOString().split("T")[0],
+      startDate: new Date().toISOString().split("T")[0],
+      endDate: new Date().toISOString().split("T")[0],
       durationDays: 1,
       vehicleId: null,
       notes: "",
@@ -282,10 +284,10 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="date"
+                name="startDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel>Start Date</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} data-testid="input-date" />
                     </FormControl>
