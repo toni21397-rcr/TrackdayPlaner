@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Calendar as CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -95,8 +95,8 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
       entryFeeCents: undefined,
     } : {
       trackId: "",
-      startDate: new Date().toISOString().split("T")[0],
-      endDate: new Date().toISOString().split("T")[0],
+      startDate: format(new Date(), 'yyyy-MM-dd'),
+      endDate: format(new Date(), 'yyyy-MM-dd'),
       vehicleId: null,
       notes: "",
       participationStatus: "planned",
@@ -300,14 +300,14 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
                             data-testid="button-start-date"
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(new Date(field.value), "PPP") : "Pick a date"}
+                            {field.value ? format(parseISO(field.value), "PPP") : "Pick a date"}
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value ? new Date(field.value) : undefined}
+                          selected={field.value ? parseISO(field.value) : undefined}
                           onSelect={(date) => {
                             const dateStr = date ? format(date, 'yyyy-MM-dd') : "";
                             field.onChange(dateStr);
@@ -345,14 +345,14 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
                             data-testid="button-end-date"
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(new Date(field.value), "PPP") : "Pick a date"}
+                            {field.value ? format(parseISO(field.value), "PPP") : "Pick a date"}
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value ? new Date(field.value) : undefined}
+                          selected={field.value ? parseISO(field.value) : undefined}
                           onSelect={(date) => {
                             const dateStr = date ? format(date, 'yyyy-MM-dd') : "";
                             field.onChange(dateStr);
@@ -360,7 +360,7 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
                           disabled={(date) => {
                             const startDate = form.getValues("startDate");
                             if (!startDate) return false;
-                            return date < new Date(startDate);
+                            return format(date, 'yyyy-MM-dd') < startDate;
                           }}
                           initialFocus
                         />

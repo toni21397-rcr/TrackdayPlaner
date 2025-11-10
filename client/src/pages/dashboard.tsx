@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { KpiCard } from "@/components/kpi-card";
 import { BudgetProgress } from "@/components/budget-progress";
 import { MonthlyChart } from "@/components/monthly-chart";
+import { TrackdayCalendar } from "@/components/trackday-calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, DollarSign, Wrench, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
@@ -26,6 +27,10 @@ export default function Dashboard() {
 
   const { data: upcoming, isLoading: upcomingLoading } = useQuery<Array<Trackday & { track: Track }>>({
     queryKey: ["/api/trackdays/upcoming"],
+  });
+
+  const { data: allTrackdays, isLoading: trackdaysLoading } = useQuery<Array<Trackday & { track: Track }>>({
+    queryKey: ["/api/trackdays"],
   });
 
   const formatCurrency = (cents: number) => {
@@ -100,6 +105,12 @@ export default function Dashboard() {
             annual={budget.annualBudgetCents}
           />
         ) : null}
+
+        {/* Trackday Calendar */}
+        <TrackdayCalendar 
+          trackdays={allTrackdays} 
+          isLoading={trackdaysLoading} 
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Monthly Chart */}
