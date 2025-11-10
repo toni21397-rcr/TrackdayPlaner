@@ -1,42 +1,37 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface KpiCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
   icon: LucideIcon;
-  trend?: {
-    value: string;
-    isPositive: boolean;
-  };
+  onClick?: () => void;
 }
 
-export function KpiCard({ title, value, subtitle, icon: Icon, trend }: KpiCardProps) {
+export function KpiCard({ title, value, subtitle, icon: Icon, onClick }: KpiCardProps) {
+  const isClickable = !!onClick;
+
   return (
-    <Card className="hover-elevate bg-gradient-to-br from-card to-card/50">
+    <Card 
+      className={cn(
+        isClickable && "cursor-pointer hover-elevate active-elevate-2 transition-all"
+      )}
+      onClick={onClick}
+      data-testid={`kpi-card-${title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              {title}
-            </p>
-            <p className="text-4xl font-mono font-bold tracking-tight" data-testid={`kpi-${title.toLowerCase().replace(/\s+/g, '-')}`}>
-              {value}
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="text-2xl font-semibold">{value}</p>
             {subtitle && (
-              <p className="text-sm text-muted-foreground">{subtitle}</p>
-            )}
-            {trend && (
-              <div className="flex items-center gap-1">
-                <span className={`text-sm font-semibold ${trend.isPositive ? 'text-success' : 'text-destructive'}`}>
-                  {trend.isPositive ? '↑' : '↓'} {trend.value}
-                </span>
-              </div>
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
             )}
           </div>
-          <div className="p-3 rounded-lg bg-primary/10">
-            <Icon className="w-6 h-6 text-primary" />
+          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Icon className="h-6 w-6 text-primary" />
           </div>
         </div>
       </CardContent>

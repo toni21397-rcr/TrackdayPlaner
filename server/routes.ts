@@ -770,8 +770,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       td.startDate >= today && td.participationStatus !== "cancelled"
     );
     
+    // Count paid cost items
     const paidCosts = costItems.filter(c => c.status === "paid");
-    const totalCostCents = paidCosts.reduce((sum, c) => sum + c.amountCents, 0);
+    const paidCostsCents = paidCosts.reduce((sum, c) => sum + c.amountCents, 0);
+    
+    // Also count registration fees for registered and attended trackdays
+    // (assumes registration means already paid)
+    const paidTrackdayFees = thisYearTrackdays
+      .filter(td => td.participationStatus === "registered" || td.participationStatus === "attended")
+      .reduce((sum, td) => sum + td.registrationFeeCents, 0);
+    
+    const totalCostCents = paidCostsCents + paidTrackdayFees;
     
     const thisYearMaintenance = maintenanceLogs.filter(m => m.date.startsWith(currentYear));
     const maintenanceCostCents = thisYearMaintenance.reduce((sum, m) => sum + m.costCents, 0);
