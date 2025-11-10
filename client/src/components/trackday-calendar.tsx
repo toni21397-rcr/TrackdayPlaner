@@ -61,72 +61,93 @@ const getStatusLabel = (status: string) => {
   return status.charAt(0).toUpperCase() + status.slice(1);
 };
 
-// Fun empty state messages (28 unique messages with seasonal themes)
+// Fun empty state messages - at least 3 per month (36+ total)
 const getRandomEmptyMessage = (monthName: string, year: number) => {
   const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
   
-  // Seasonal messages for winter months (Dec, Jan, Feb)
-  const winterMessages = [
-    `Your bike's ${monthName} wish list: A track day. Just one. Please`,
-    `${monthName}: Perfect weather for hot chocolate and cold tires apparently`,
-    `Santa checked twice - still no trackdays in ${monthName}. You're on the naughty list`,
-    `${monthName} hibernation mode: Your bike is dreaming of summer apex speeds`,
-    `New Year's resolution: Book at least ONE trackday in ${monthName}. Baby steps`,
-    `${monthName}: When your bike asked Santa for track time, Santa ghosted it`,
-    `Winter wonderland? More like winter "wonder when we'll ride again" land`,
-    `${monthName} status: Your bike is writing a strongly worded letter to management`,
-  ];
+  // Messages grouped by month - each month has 3+ options
+  const messagesByMonth: Record<number, string[]> = {
+    // January
+    0: [
+      `New Year's resolution: Book at least ONE trackday in ${monthName}. Baby steps`,
+      `${monthName} hibernation mode: Your bike is dreaming of summer apex speeds`,
+      `Your bike's ${monthName} wish list: A track day. Just one. Please`,
+    ],
+    // February
+    1: [
+      `${monthName}: Perfect weather for hot chocolate and cold tires apparently`,
+      `${monthName} status: Your bike is writing a strongly worded letter to management`,
+      `Winter blues in ${monthName}? More like blues from not riding`,
+    ],
+    // March
+    2: [
+      `${monthName} called - spring has sprung and your bike is stretching after its winter nap`,
+      `${monthName} - officially too nice outside to justify this empty calendar`,
+      `Spring cleaning includes your calendar too. Time to fill ${monthName} with track days`,
+    ],
+    // April
+    3: [
+      `Your bike: "It's ${monthName}, I thought we had plans?" You: *nervous sweating*`,
+      `${monthName} showers bring May flowers, but what brings track days? You booking them`,
+      `Plot twist: ${monthName} is perfect riding weather but here we are, calendars emptier than your fuel tank`,
+    ],
+    // May
+    4: [
+      `Spring has sprung in ${monthName}, but apparently your riding schedule hasn't`,
+      `${monthName} forecast: Sunny with scattered disappointment from your motorcycle`,
+      `Your bike in ${monthName}: "Finally nice weather and... nothing? Really?"`,
+    ],
+    // June
+    5: [
+      `It's ${monthName}. PRIME track season. And yet here we are, staring at this empty calendar`,
+      `${monthName}: When everyone else is posting track photos and you're posting... nothing`,
+      `Fun fact: ${monthName} has 30 days of perfect track weather. You've booked 0 of them`,
+    ],
+    // July
+    6: [
+      `Your bike in ${monthName}: "So we're just gonna let peak season pass us by? Cool cool cool"`,
+      `${monthName} - The month your bike learned what betrayal feels like`,
+      `Breaking: Local bike reports abandonment during peak ${monthName} track season`,
+    ],
+    // August
+    7: [
+      `Breaking: Local rider discovers ${monthName} exists but forgets motorcycles do too`,
+      `${monthName}: Last month of prime season and your calendar is more empty than your gas tank`,
+      `Your bike's ${monthName} status: Questioning all life choices that led to this moment`,
+    ],
+    // September
+    8: [
+      `${monthName}: Last call for track days before hibernation season. Your bike is giving you The Look`,
+      `Plot twist: ${monthName} could've been your redemption arc. Could've been`,
+      `${monthName} - When summer's ending and you realize you wasted it all`,
+    ],
+    // October
+    9: [
+      `${monthName} - When your bike realizes winter is coming and you STILL haven't booked anything`,
+      `Fall colors in ${monthName} are beautiful. Know what would be more beautiful? A BOOKED TRACKDAY`,
+      `${monthName}: Your bike's passive aggressive with a chance of giving up on you entirely`,
+    ],
+    // November
+    10: [
+      `${monthName} - The month your bike started updating its resume`,
+      `${monthName}: Thanksgiving? Your bike isn't thankful for this empty calendar`,
+      `Your bike's ${monthName} mood: Disappointed but not surprised`,
+    ],
+    // December
+    11: [
+      `Santa checked twice - still no trackdays in ${monthName}. You're on the naughty list`,
+      `${monthName}: When your bike asked Santa for track time, Santa ghosted it`,
+      `Your bike's ${monthName} Christmas wish: Just one trackday. Is that too much to ask?`,
+    ],
+  };
   
-  // Spring messages (Mar, Apr, May)
-  const springMessages = [
-    `${monthName} called - spring has sprung and your bike is stretching after its winter nap`,
-    `Plot twist: ${monthName} is perfect riding weather but here we are, calendars emptier than your fuel tank`,
-    `Your bike: "It's ${monthName}, I thought we had plans?" You: *nervous sweating*`,
-    `${monthName} - officially too nice outside to justify this empty calendar`,
-    `Spring has sprung in ${monthName}, but apparently your riding schedule hasn't`,
-    `${monthName} forecast: Sunny with scattered disappointment from your motorcycle`,
-  ];
+  const monthMessages = messagesByMonth[monthIndex];
   
-  // Summer messages (Jun, Jul, Aug)
-  const summerMessages = [
-    `It's ${monthName}. PRIME track season. And yet here we are, staring at this empty calendar`,
-    `${monthName}: When everyone else is posting track photos and you're posting... nothing`,
-    `Your bike in ${monthName}: "So we're just gonna let peak season pass us by? Cool cool cool"`,
-    `Breaking: Local rider discovers ${monthName} exists but forgets motorcycles do too`,
-    `${monthName} - The month your bike learned what betrayal feels like`,
-    `Fun fact: ${monthName} has 30 days of perfect track weather. You've booked 0 of them`,
-  ];
+  // Use year to cycle through messages - ensures different message each year
+  // (year % 3) gives us 0, 1, or 2, cycling through the 3+ messages
+  const messageIndex = year % monthMessages.length;
   
-  // Fall messages (Sep, Oct, Nov)
-  const fallMessages = [
-    `${monthName}: Last call for track days before hibernation season. Your bike is giving you The Look`,
-    `${monthName} - When your bike realizes winter is coming and you STILL haven't booked anything`,
-    `Plot twist: ${monthName} could've been your redemption arc. Could've been`,
-    `Your bike's ${monthName} mood: Passive aggressive with a chance of giving up on you entirely`,
-    `${monthName} - The month your bike started updating its resume`,
-    `Fall colors in ${monthName} are beautiful. Know what would be more beautiful? A BOOKED TRACKDAY`,
-  ];
-  
-  // Determine which season based on month
-  let seasonalMessages;
-  if (monthIndex === 11 || monthIndex === 0 || monthIndex === 1) {
-    // Dec, Jan, Feb - Winter
-    seasonalMessages = winterMessages;
-  } else if (monthIndex >= 2 && monthIndex <= 4) {
-    // Mar, Apr, May - Spring
-    seasonalMessages = springMessages;
-  } else if (monthIndex >= 5 && monthIndex <= 7) {
-    // Jun, Jul, Aug - Summer
-    seasonalMessages = summerMessages;
-  } else {
-    // Sep, Oct, Nov - Fall
-    seasonalMessages = fallMessages;
-  }
-  
-  // Use month and year to deterministically pick a message (no repeats in same year)
-  const offset = year % 3; // Cycle through message variations every 3 years
-  const index = (monthIndex + offset) % seasonalMessages.length;
-  return seasonalMessages[index];
+  return monthMessages[messageIndex];
 };
 
 interface TrackdayCalendarProps {
