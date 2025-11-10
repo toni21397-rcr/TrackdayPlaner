@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { StatusBadge } from "@/components/status-badge";
 import type { DashboardStats, BudgetSummary, MonthlySpending, Trackday, Track } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDateRange } from "@/lib/utils";
 
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
@@ -158,7 +159,7 @@ export default function Dashboard() {
                             {trackday.track.name}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {trackday.track.country}
+                            {formatDateRange(trackday.startDate, trackday.endDate)} • {trackday.track.country}
                           </div>
                           <div className="mt-1">
                             <StatusBadge

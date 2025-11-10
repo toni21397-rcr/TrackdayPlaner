@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
   SelectContent,
@@ -87,7 +89,6 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
       trackId: trackday.trackId,
       startDate: trackday.startDate,
       endDate: trackday.endDate,
-      durationDays: trackday.durationDays,
       vehicleId: trackday.vehicleId,
       notes: trackday.notes,
       participationStatus: trackday.participationStatus,
@@ -96,7 +97,6 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
       trackId: "",
       startDate: new Date().toISOString().split("T")[0],
       endDate: new Date().toISOString().split("T")[0],
-      durationDays: 1,
       vehicleId: null,
       notes: "",
       participationStatus: "planned",
@@ -286,11 +286,42 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
                 control={form.control}
                 name="startDate"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} data-testid="input-date" />
-                    </FormControl>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-start-date"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(new Date(field.value), "PPP") : "Pick a date"}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value ? new Date(field.value) : undefined}
+                          onSelect={(date) => {
+                            const dateStr = date ? format(date, 'yyyy-MM-dd') : "";
+                            field.onChange(dateStr);
+                            
+                            // Auto-update end date if it's before the new start date
+                            const currentEndDate = form.getValues("endDate");
+                            if (!currentEndDate || currentEndDate < (dateStr || "")) {
+                              form.setValue("endDate", dateStr || "");
+                            }
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -298,18 +329,43 @@ export function TrackdayDialog({ open, onOpenChange, trackday }: TrackdayDialogP
 
               <FormField
                 control={form.control}
-                name="durationDays"
+                name="endDate"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duration (days)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                        data-testid="input-duration"
-                      />
-                    </FormControl>
+                  <FormItem className="flex flex-col">
+                    <FormLabel>End Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-end-date"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(new Date(field.value), "PPP") : "Pick a date"}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value ? new Date(field.value) : undefined}
+                          onSelect={(date) => {
+                            const dateStr = date ? format(date, 'yyyy-MM-dd') : "";
+                            field.onChange(dateStr);
+                          }}
+                          disabled={(date) => {
+                            const startDate = form.getValues("startDate");
+                            if (!startDate) return false;
+                            return date < new Date(startDate);
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}

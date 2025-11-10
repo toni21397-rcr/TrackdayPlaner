@@ -19,6 +19,7 @@ import { TrackdayDialog } from "@/components/trackday-dialog";
 import type { Trackday, Track, Vehicle } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDateRange } from "@/lib/utils";
 
 interface Settings {
   id: string;
@@ -164,7 +165,7 @@ export default function Trackdays() {
                           <div>
                             <h3 className="font-semibold text-lg">{trackday.track.name}</h3>
                             <p className="text-sm text-muted-foreground">
-                              {trackday.track.country}
+                              {formatDateRange(trackday.startDate, trackday.endDate)} • {trackday.track.country}
                             </p>
                           </div>
                         </div>

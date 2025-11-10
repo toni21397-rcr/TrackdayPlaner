@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Track, Trackday } from "@shared/schema";
 import { format } from "date-fns";
+import { formatDateRange } from "@/lib/utils";
 
 interface TrackdayWithTrack extends Trackday {
   track?: Track;
@@ -185,7 +186,7 @@ export function TrackInfoPanel({ track, trackdays = [], onClose, onTrackdayClick
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">
-                          {format(new Date(trackday.startDate), "MMM d, yyyy")}
+                          {formatDateRange(trackday.startDate, trackday.endDate)}
                         </div>
                         {trackday.notes && (
                           <div className="text-xs text-muted-foreground truncate mt-1">

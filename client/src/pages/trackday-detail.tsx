@@ -17,6 +17,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Trackday, Track, Vehicle } from "@shared/schema";
+import { formatDateRange } from "@/lib/utils";
 
 export default function TrackdayDetail() {
   const [, params] = useRoute("/trackdays/:id");
@@ -104,7 +105,9 @@ export default function TrackdayDetail() {
                   </div>
                   <div>
                     <h1 className="text-3xl font-semibold">{trackday.track.name}</h1>
-                    <p className="text-muted-foreground">{trackday.track.country}</p>
+                    <p className="text-muted-foreground">
+                      {formatDateRange(trackday.startDate, trackday.endDate)} • {trackday.track.country}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
