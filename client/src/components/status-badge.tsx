@@ -9,36 +9,36 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, type }: StatusBadgeProps) {
   if (type === "participation") {
-    const configs = {
-      [ParticipationStatus.PLANNED]: {
+    const configs: Record<string, { label: string; className: string; icon: any }> = {
+      planned: {
         label: "Planned",
-        variant: "secondary" as const,
+        className: "bg-blue-500 text-white hover:bg-blue-600",
         icon: Circle,
       },
-      [ParticipationStatus.REGISTERED]: {
+      registered: {
         label: "Registered",
-        variant: "info" as const,
+        className: "bg-orange-500 text-white hover:bg-orange-600",
         icon: Clock,
       },
-      [ParticipationStatus.ATTENDED]: {
+      attended: {
         label: "Attended",
-        variant: "success" as const,
+        className: "bg-green-500 text-white hover:bg-green-600",
         icon: CheckCircle,
       },
-      [ParticipationStatus.CANCELLED]: {
+      cancelled: {
         label: "Cancelled",
-        variant: "destructive" as const,
+        className: "bg-red-500 text-white hover:bg-red-600",
         icon: XCircle,
       },
     };
 
-    const config = configs[status as keyof typeof ParticipationStatus];
+    const config = configs[status];
     if (!config) return null;
 
     const Icon = config.icon;
 
     return (
-      <Badge variant={config.variant}>
+      <Badge className={config.className}>
         <Icon className="w-3 h-3 mr-1" />
         {config.label}
       </Badge>
@@ -46,30 +46,30 @@ export function StatusBadge({ status, type }: StatusBadgeProps) {
   }
 
   if (type === "payment") {
-    const configs = {
-      [PaymentStatus.PLANNED]: {
+    const configs: Record<string, { label: string; className: string }> = {
+      planned: {
         label: "Planned",
-        variant: "secondary" as const,
+        className: "bg-blue-500 text-white hover:bg-blue-600",
       },
-      [PaymentStatus.INVOICED]: {
+      invoiced: {
         label: "Invoiced",
-        variant: "warning" as const,
+        className: "bg-amber-500 text-white hover:bg-amber-600",
       },
-      [PaymentStatus.PAID]: {
+      paid: {
         label: "Paid",
-        variant: "success" as const,
+        className: "bg-green-500 text-white hover:bg-green-600",
       },
-      [PaymentStatus.REFUNDED]: {
+      refunded: {
         label: "Refunded",
-        variant: "destructive" as const,
+        className: "bg-red-500 text-white hover:bg-red-600",
       },
     };
 
-    const config = configs[status as keyof typeof PaymentStatus];
+    const config = configs[status];
     if (!config) return null;
 
     return (
-      <Badge variant={config.variant}>
+      <Badge className={config.className}>
         {config.label}
       </Badge>
     );
