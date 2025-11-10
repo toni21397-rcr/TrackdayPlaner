@@ -482,7 +482,6 @@ export const trackdays = pgTable(
     trackId: varchar("track_id").notNull().references(() => tracks.id, { onDelete: "cascade" }),
     startDate: varchar("start_date", { length: 20 }).notNull(),
     endDate: varchar("end_date", { length: 20 }).notNull(),
-    durationDays: integer("duration_days").notNull().default(1),
     vehicleId: varchar("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
     notes: text("notes").notNull().default(""),
     participationStatus: varchar("participation_status", { length: 20 }).notNull().default("planned"),
