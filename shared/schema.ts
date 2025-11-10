@@ -200,7 +200,6 @@ export const insertTrackdaySchema = z.object({
   trackId: z.string().min(1, "Track is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
-  durationDays: z.number().min(1).max(30).optional(),
   vehicleId: z.string().nullable(),
   notes: z.string().default(""),
   participationStatus: z.enum(["planned", "registered", "attended", "cancelled"]).default("planned"),
